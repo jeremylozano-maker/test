@@ -155,7 +155,25 @@ local confirmButton = makeButton({
 	Studs = 3,
 })
 
-local buildPanel, buildBody, buildTitle, _, buildClose = UIKit.makePanel({
+-- Compteur d'objets posés / maximum (en haut, visible en BUILD et DELETE)
+local counterPill = create("Frame", {
+	Parent = gui,
+	AnchorPoint = Vector2.new(0.5, 0),
+	Position = UDim2.new(0.5, 0, 0, 124),
+	Size = UDim2.new(0, 250, 0, 46),
+	BackgroundColor3 = UIKit.PANEL_COLOR,
+	BorderSizePixel = 0,
+	Visible = false,
+}, { UIKit.corner(14), UIKit.stroke(3), UIKit.shine() })
+UIKit.addStuds(counterPill, 3)
+local counterLabel = UIKit.label({
+	Parent = counterPill,
+	Position = UDim2.new(0, 10, 0, 6),
+	Size = UDim2.new(1, -20, 1, -12),
+	Text = "",
+})
+
+local buildPanel, buildBody, _, _, buildClose = UIKit.makePanel({
 	Parent = gui,
 	Title = "🔨 BUILD",
 	Accent = UIKit.GREEN,
@@ -208,10 +226,16 @@ local function isAtCapacity()
 	return #placedFolder:GetChildren() >= SkillTree.GetBuildCapacity(state.Skills)
 end
 
+-- 📦 objets posés / maximum ; rouge quand l'île est pleine (améliorable avec Build Capacity)
+local function renderCounter()
+	counterPill.Visible = state.Mode ~= nil
+	local full = isAtCapacity()
+	counterLabel.Text = string.format("📦 %d / %d objets%s", #placedFolder:GetChildren(),
+		SkillTree.GetBuildCapacity(state.Skills), if full then "  • PLEIN" else "")
+	counterPill.BackgroundColor3 = if full then UIKit.darken(UIKit.RED, 0.2) else UIKit.PANEL_COLOR
+end
+
 local function renderBuildPanel()
-	buildTitle.Text = string.format("🔨 BUILD   📦 %d/%d", #placedFolder:GetChildren(), SkillTree.GetBuildCapacity(state.Skills))
-	-- en rouge quand l'île est pleine (améliorable avec Build Capacity dans le Skill Tree)
-	buildTitle.TextColor3 = if isAtCapacity() then Color3.fromRGB(255, 120, 120) else UIKit.WHITE
 	for category, button in tabButtons do
 		button.BackgroundColor3 = if category == state.Tab then UIKit.GREEN else UIKit.BUTTON_COLOR
 	end
@@ -436,6 +460,7 @@ local function setMode(mode)
 	selectItem(nil)
 
 	buildPanel.Visible = mode == "Build"
+	renderCounter()
 	buildButton.BackgroundColor3 = if mode == "Build" then UIKit.GREEN else BUILD_IDLE
 	deleteButton.BackgroundColor3 = if mode == "Delete" then UIKit.RED else DELETE_IDLE
 	confirmButton.BackgroundColor3 = if mode == "Delete" then UIKit.RED else UIKit.GREEN
@@ -506,6 +531,7 @@ end)
 local function applySnapshot(snapshot)
 	state.Inventory = snapshot.Inventory or {}
 	state.Skills = snapshot.Skills or {}
+	renderCounter()
 	if state.SelectedId and (state.Inventory[state.SelectedId] or 0) <= 0 then
 		selectItem(nil)
 	elseif state.Mode == "Build" then
@@ -517,6 +543,7 @@ Remotes.DataSync.OnClientEvent:Connect(applySnapshot)
 
 -- le compteur 📦 suit les objets posés / supprimés
 local function refreshIfBuilding()
+	renderCounter()
 	if state.Mode == "Build" then
 		renderBuildPanel()
 	end
