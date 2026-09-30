@@ -86,6 +86,7 @@ local function beginWave()
 	spawnTimer = 0
 	setIntermission(0)
 	setInfo("EnemiesLeft", #spawnQueue)
+	setInfo("WaveTotal", #spawnQueue) -- pour la barre "zombies restants"
 	setPhase("Wave")
 end
 

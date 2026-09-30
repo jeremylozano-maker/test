@@ -1,4 +1,6 @@
--- RollClient : UI du Roll, des Coins, de l'Inventaire et de l'Index (affichage uniquement, le serveur décide)
+-- RollClient : fenêtre des dés (ROLL / Auto Roll / Fermer), Coins, Inventaire, Index
+-- Affichage uniquement : c'est le serveur qui tire les objets.
+-- Mise en page : colonne à gauche (Coins, Index, Inventaire), gros bouton ROLL en bas au milieu.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -7,8 +9,10 @@ local player = Players.LocalPlayer
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Items = require(Shared:WaitForChild("Items"))
 local Rarities = require(Shared:WaitForChild("Rarities"))
+local RollMath = require(Shared:WaitForChild("RollMath"))
 local SkillTree = require(Shared:WaitForChild("SkillTree"))
 local UIKit = require(Shared:WaitForChild("UIKit"))
+local HudState = require(Shared:WaitForChild("HudState"))
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 
 local create, corner, stroke, makeButton = UIKit.create, UIKit.corner, UIKit.stroke, UIKit.makeButton
@@ -21,7 +25,6 @@ local state = {
 	Revealing = false,
 	Busy = false,
 	AutoRoll = false,
-	RevealToken = 0,
 }
 
 ---------------------------------------------------------------- écran
@@ -49,12 +52,21 @@ local flash = create("Frame", {
 	Active = false,
 })
 
--- Coins (en haut au centre)
-local coinsFrame = create("Frame", {
+---------------------------------------------------------------- colonne de gauche : Coins, Index, Inventaire
+
+local leftColumn = create("Frame", {
 	Parent = gui,
-	AnchorPoint = Vector2.new(0.5, 0),
-	Position = UDim2.new(0.5, 0, 0, 12),
-	Size = UDim2.new(0, 200, 0, 46),
+	AnchorPoint = Vector2.new(0, 0.5),
+	Position = UDim2.new(0, 16, 0.5, 0),
+	Size = UDim2.new(0, 210, 0, 1),
+	BackgroundTransparency = 1,
+})
+
+local coinsFrame = create("Frame", {
+	Parent = leftColumn,
+	AnchorPoint = Vector2.new(0, 0.5),
+	Position = UDim2.new(0, 0, 0, -120),
+	Size = UDim2.new(0, 210, 0, 52),
 	BackgroundColor3 = UIKit.PANEL_COLOR,
 	BorderSizePixel = 0,
 }, { corner(14), stroke(3), UIKit.shine() })
@@ -66,37 +78,84 @@ local coinsLabel = UIKit.label({
 	Size = UDim2.new(1, -20, 1, -12),
 	Text = "🪙 0",
 	TextColor3 = UIKit.YELLOW,
+	TextXAlignment = Enum.TextXAlignment.Left,
 })
 
--- Bouton ROLL (en bas au centre)
-local rollButton = makeButton({
+local indexButton = makeButton({
+	Parent = leftColumn,
+	AnchorPoint = Vector2.new(0, 0.5),
+	Position = UDim2.new(0, 0, 0, -45),
+	Size = UDim2.new(0, 150, 0, 56),
+	BackgroundColor3 = UIKit.PURPLE,
+	Text = "📖 Index",
+	Studs = 3,
+})
+
+local inventoryButton = makeButton({
+	Parent = leftColumn,
+	AnchorPoint = Vector2.new(0, 0.5),
+	Position = UDim2.new(0, 0, 0, 25),
+	Size = UDim2.new(0, 150, 0, 56),
+	BackgroundColor3 = UIKit.BLUE,
+	Text = "🎒 Inventory",
+	Studs = 3,
+})
+
+-- Luck et temps entre les rolls (en bas à gauche)
+local statsLabel = UIKit.label({
+	Parent = gui,
+	AnchorPoint = Vector2.new(0, 1),
+	Position = UDim2.new(0, 16, 1, -14),
+	Size = UDim2.new(0, 230, 0, 26),
+	Text = "",
+	TextXAlignment = Enum.TextXAlignment.Left,
+})
+
+---------------------------------------------------------------- barre du bas : ROLL au milieu (+ Auto Roll et Fermer quand la fenêtre des dés est ouverte)
+
+local rollButton, rollIcon, rollName = UIKit.makeIconButton({
 	Parent = gui,
 	Name = "RollButton",
 	AnchorPoint = Vector2.new(0.5, 1),
-	Position = UDim2.new(0.5, 0, 1, -22),
-	Size = UDim2.new(0, 230, 0, 74),
+	Position = UDim2.new(0.5, 0, 1, -16),
+	Size = UDim2.new(0, 130, 0, 124),
 	BackgroundColor3 = UIKit.GREEN,
-	Text = "🎲 ROLL",
-	Studs = 4,
+	Icon = "🎲",
+	Label = "ROLL",
+	Studs = 3,
 })
 
 local _, cooldownFill = UIKit.makeBar({
 	Parent = rollButton,
 	AnchorPoint = Vector2.new(0.5, 1),
-	Position = UDim2.new(0.5, 0, 1, 2),
+	Position = UDim2.new(0.5, 0, 1, 4),
 	Size = UDim2.new(1, 0, 0, 8),
 }, UIKit.WHITE)
 
--- AUTO : lance les rolls à la suite (verrouillé tant que "Auto Roll" n'est pas acheté dans le Skill Tree)
-local autoButton = makeButton({
+-- AUTO : verrouillé tant que "Auto Roll" n'est pas acheté dans le Skill Tree
+local autoButton, _, autoName = UIKit.makeIconButton({
 	Parent = gui,
-	AnchorPoint = Vector2.new(0, 1),
-	Position = UDim2.new(0.5, 130, 1, -22),
-	Size = UDim2.new(0, 130, 0, 54),
-	Text = "🔒 AUTO",
+	AnchorPoint = Vector2.new(1, 1),
+	Position = UDim2.new(0.5, -80, 1, -16),
+	Size = UDim2.new(0, 104, 0, 96),
+	Icon = "🔁",
+	Label = "OFF",
+	Visible = false,
 	Studs = 2,
 })
 local autoHintUntil = 0 -- affiche un conseil quelques secondes après un clic sur AUTO verrouillé
+
+local closeRollButton = UIKit.makeIconButton({
+	Parent = gui,
+	AnchorPoint = Vector2.new(0, 1),
+	Position = UDim2.new(0.5, 80, 1, -16),
+	Size = UDim2.new(0, 104, 0, 96),
+	BackgroundColor3 = UIKit.RED,
+	Icon = "✕",
+	Label = "Close",
+	Visible = false,
+	Studs = 2,
+})
 
 local function isAutoUnlocked()
 	return state.Snapshot ~= nil and SkillTree.HasAutoRoll(state.Snapshot.Skills)
@@ -105,44 +164,23 @@ end
 local function renderAutoButton()
 	if not isAutoUnlocked() then
 		state.AutoRoll = false
-		autoButton.Text = if os.clock() < autoHintUntil then "🌳 Skill Tree !" else "🔒 AUTO"
+		autoName.Text = if os.clock() < autoHintUntil then "🌳 Skills !" else "🔒 Auto"
 		autoButton.BackgroundColor3 = UIKit.darken(UIKit.BUTTON_COLOR, 0.3)
 	else
-		autoButton.Text = if state.AutoRoll then "🔁 AUTO: ON" else "🔁 AUTO: OFF"
+		autoName.Text = if state.AutoRoll then "Auto : ON" else "Auto : OFF"
 		autoButton.BackgroundColor3 = if state.AutoRoll then UIKit.GREEN else UIKit.BUTTON_COLOR
 	end
 end
 
--- Boutons à droite
-local inventoryButton = makeButton({
-	Parent = gui,
-	AnchorPoint = Vector2.new(1, 0.5),
-	Position = UDim2.new(1, -14, 0.5, -34),
-	Size = UDim2.new(0, 150, 0, 56),
-	BackgroundColor3 = UIKit.BLUE,
-	Text = "🎒 Inventory",
-	Studs = 3,
-})
-
-local indexButton = makeButton({
-	Parent = gui,
-	AnchorPoint = Vector2.new(1, 0.5),
-	Position = UDim2.new(1, -14, 0.5, 34),
-	Size = UDim2.new(0, 150, 0, 56),
-	BackgroundColor3 = UIKit.PURPLE,
-	Text = "📖 Index",
-	Studs = 3,
-})
-
----------------------------------------------------------------- fenêtres Inventaire / Index
+---------------------------------------------------------------- fenêtres Inventaire / Index (à droite de la colonne de gauche)
 
 local function makeSidePanel(title, accent)
 	local panel, body, titleLabel = UIKit.makePanel({
 		Parent = gui,
 		Title = title,
 		Accent = accent,
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -178, 0.5, 0),
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 240, 0.5, 0),
 		Size = UDim2.fromScale(0.32, 0.72),
 		MinSize = Vector2.new(260, 240),
 		MaxSize = Vector2.new(430, 580),
@@ -220,10 +258,16 @@ local function renderIndex()
 	indexFill.Size = UDim2.fromScale(found / #Items.List, 1)
 end
 
+local function renderStats()
+	local skills = state.Snapshot and state.Snapshot.Skills or {}
+	statsLabel.Text = string.format("🍀 +%d%%   ⏱️ %.2fs", math.floor(SkillTree.GetLuck(skills) * 100 + 0.5), SkillTree.GetRollCooldown(skills))
+end
+
 local function applySnapshot(snapshot)
 	state.Snapshot = snapshot
 	coinsLabel.Text = "🪙 " .. snapshot.Coins
 	renderAutoButton()
+	renderStats()
 	if inventoryPanel.Visible then
 		renderInventory()
 	end
@@ -248,29 +292,55 @@ indexButton.Activated:Connect(function()
 	end
 end)
 
----------------------------------------------------------------- révélation du roll
+---------------------------------------------------------------- révélation du roll (au centre, fond transparent)
 
--- En haut au milieu, juste sous les Coins, sans fond (seulement le texte)
-local REVEAL_POSITION = UDim2.new(0.5, 0, 0, 66)
+local REVEAL_POSITION = UDim2.fromScale(0.5, 0.4)
 
 local reveal = create("Frame", {
 	Parent = gui,
 	Visible = false,
-	AnchorPoint = Vector2.new(0.5, 0),
+	AnchorPoint = Vector2.new(0.5, 0.5),
 	Position = REVEAL_POSITION,
-	Size = UDim2.new(0.5, 0, 0, 104),
+	Size = UDim2.new(0.5, 0, 0, 230),
 	BackgroundTransparency = 1,
 }, {
-	create("UISizeConstraint", { MinSize = Vector2.new(300, 104), MaxSize = Vector2.new(520, 104) }),
+	create("UISizeConstraint", { MinSize = Vector2.new(300, 230), MaxSize = Vector2.new(520, 230) }),
 })
 local revealScale = create("UIScale", { Parent = reveal, Scale = 1 })
 
--- Pastille de rareté en haut
-local rarityChip = create("Frame", {
+-- "1 in 12" : chance d'obtenir cet objet précis
+local oddsLabel = UIKit.label({
 	Parent = reveal,
 	AnchorPoint = Vector2.new(0.5, 0),
 	Position = UDim2.new(0.5, 0, 0, 0),
-	Size = UDim2.new(0.45, 0, 0, 32),
+	Size = UDim2.new(0.5, 0, 0, 30),
+	Text = "",
+	TextStrokeTransparency = 0,
+	Rotation = -4,
+})
+
+local iconLabel = UIKit.label({
+	Parent = reveal,
+	AnchorPoint = Vector2.new(0.5, 0),
+	Position = UDim2.new(0.5, 0, 0, 30),
+	Size = UDim2.new(0, 100, 0, 90),
+	Text = "",
+})
+
+local nameLabel = UIKit.label({
+	Parent = reveal,
+	Position = UDim2.new(0.02, 0, 0, 122),
+	Size = UDim2.new(0.96, 0, 0, 52),
+	Text = "",
+	TextStrokeTransparency = 0,
+})
+
+-- Pastille de rareté sous le nom
+local rarityChip = create("Frame", {
+	Parent = reveal,
+	AnchorPoint = Vector2.new(0.5, 0),
+	Position = UDim2.new(0.5, 0, 0, 178),
+	Size = UDim2.new(0.42, 0, 0, 32),
 	BackgroundColor3 = UIKit.BUTTON_COLOR,
 	BorderSizePixel = 0,
 }, { corner(10), stroke(3), UIKit.shine() })
@@ -282,18 +352,9 @@ local rarityLabel = UIKit.label({
 	Text = "",
 })
 
-local nameLabel = UIKit.label({
-	Parent = reveal,
-	Position = UDim2.new(0.02, 0, 0, 38),
-	Size = UDim2.new(0.96, 0, 0, 62),
-	Text = "",
-	TextStrokeTransparency = 0,
-})
-
 local newBadge = create("TextLabel", {
 	Parent = reveal,
-	AnchorPoint = Vector2.new(1, 0),
-	Position = UDim2.new(1, 0, 0, 0),
+	Position = UDim2.new(0.5, 50, 0, 36),
 	Size = UDim2.new(0, 86, 0, 34),
 	Rotation = 12,
 	BackgroundColor3 = UIKit.RED,
@@ -306,7 +367,7 @@ local newBadge = create("TextLabel", {
 	Visible = false,
 }, { corner(10), stroke(3), UIKit.shine(), UIKit.padding(4) })
 
--- Better Rolls : pastille "objet bonus" sous la fenêtre de révélation
+-- Better Rolls : pastille "objet bonus" sous la révélation
 local bonusChip = create("Frame", {
 	Parent = reveal,
 	AnchorPoint = Vector2.new(0.5, 0),
@@ -323,6 +384,27 @@ local bonusLabel = UIKit.label({
 	Size = UDim2.new(1, -16, 1, -8),
 	Text = "",
 })
+
+-- Chance réelle (avec la Luck du joueur) d'obtenir cet objet précis, affichée "1 in N"
+local function oddsText(item)
+	local skills = state.Snapshot and state.Snapshot.Skills or {}
+	local chances = RollMath.GetRarityChances(SkillTree.GetLuck(skills), SkillTree.GetHighRarityBonus(skills))
+	local totalWeight = 0
+	for _, other in Items.ByRarity[item.Rarity] do
+		totalWeight += Items.CategoryInfo[other.Category].RollWeight
+	end
+	local probability = chances[item.Rarity] / 100 * Items.CategoryInfo[item.Category].RollWeight / totalWeight
+	return string.format("1 in %s", math.max(1, math.floor(1 / probability + 0.5)))
+end
+
+local function showItem(item)
+	local color = Rarities.Info[item.Rarity].Color
+	iconLabel.Text = item.Icon
+	nameLabel.Text = item.Name
+	nameLabel.TextColor3 = color
+	oddsLabel.Text = oddsText(item)
+	oddsLabel.TextColor3 = color
+end
 
 local function playFlash(color, strength)
 	flash.BackgroundColor3 = color
@@ -341,6 +423,7 @@ end
 
 local function setRevealColor(color)
 	nameLabel.TextColor3 = color
+	oddsLabel.TextColor3 = color
 	rarityChip.BackgroundColor3 = UIKit.darken(color, 0.25)
 end
 
@@ -356,8 +439,6 @@ local function playReveal(result)
 	local item = Items.ById[result.ItemId]
 	local info = Rarities.Info[item.Rarity]
 	state.Revealing = true
-	state.RevealToken += 1
-	local token = state.RevealToken
 
 	-- Quick Reveal : animation plus courte
 	local speed = SkillTree.GetRevealDurationMultiplier(state.Snapshot and state.Snapshot.Skills or {})
@@ -370,14 +451,12 @@ local function playReveal(result)
 
 	-- défilement qui ralentit : plus c'est rare, plus c'est long
 	for tick = 1, info.RevealTicks do
-		local fake = Items.List[math.random(#Items.List)]
-		nameLabel.Text = fake.Icon .. " " .. fake.Name
-		nameLabel.TextColor3 = Rarities.Info[fake.Rarity].Color
+		showItem(Items.List[math.random(#Items.List)])
 		local progress = tick / info.RevealTicks
 		task.wait((0.03 + (info.RevealMaxDelay - 0.03) * progress * progress) * speed)
 	end
 
-	nameLabel.Text = item.Icon .. " " .. item.Name
+	showItem(item)
 	rarityLabel.Text = string.upper(item.Rarity)
 	setRevealColor(info.Color)
 	newBadge.Visible = result.IsNew
@@ -409,12 +488,8 @@ local function playReveal(result)
 		applySnapshot(state.Pending)
 		state.Pending = nil
 	end
-
-	task.delay(2.5, function()
-		if state.RevealToken == token and not state.Busy then
-			reveal.Visible = false
-		end
-	end)
+	-- le dernier objet reste affiché tant que la fenêtre des dés est ouverte
+	reveal.Visible = HudState.Mode == "Roll"
 end
 
 ---------------------------------------------------------------- roll
@@ -431,7 +506,7 @@ local function doRoll()
 		return
 	end
 	state.Busy = true
-	rollButton.Text = "🎲 ..."
+	rollName.Text = "..."
 
 	local started = os.clock()
 	local cooldown = state.Snapshot.RollCooldown or SkillTree.BaseRollCooldown
@@ -448,11 +523,15 @@ local function doRoll()
 	if remaining > 0 then
 		task.wait(remaining)
 	end
-	rollButton.Text = "🎲 ROLL"
+	rollName.Text = "ROLL"
 	state.Busy = false
 end
 
+-- 1er clic : ouvre la fenêtre des dés et lance un roll ; ensuite chaque clic lance un roll
 rollButton.Activated:Connect(function()
+	if HudState.Mode == "Main" then
+		HudState.SetMode("Roll")
+	end
 	task.spawn(doRoll)
 end)
 
@@ -468,6 +547,10 @@ autoButton.Activated:Connect(function()
 	renderAutoButton()
 end)
 
+closeRollButton.Activated:Connect(function()
+	HudState.SetMode("Main")
+end)
+
 task.spawn(function()
 	while true do
 		if state.AutoRoll and not state.Busy then
@@ -476,6 +559,29 @@ task.spawn(function()
 		task.wait(0.1)
 	end
 end)
+
+---------------------------------------------------------------- affichage selon le mode (écran normal / dés / construction)
+
+local function applyMode(mode)
+	local rolling = mode == "Roll"
+	rollButton.Visible = mode ~= "Build"
+	autoButton.Visible = rolling
+	closeRollButton.Visible = rolling
+	leftColumn.Visible = mode ~= "Build"
+	reveal.Visible = rolling and (state.Revealing or nameLabel.Text ~= "")
+	if not rolling then
+		state.AutoRoll = false
+		renderAutoButton()
+	end
+	if mode == "Build" then
+		inventoryPanel.Visible = false
+		indexPanel.Visible = false
+	end
+	rollIcon.Rotation = if rolling then 12 else 0
+end
+
+HudState.Changed:Connect(applyMode)
+applyMode(HudState.Mode)
 
 ---------------------------------------------------------------- synchro avec le serveur
 

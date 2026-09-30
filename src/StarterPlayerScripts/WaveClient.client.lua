@@ -1,4 +1,4 @@
--- WaveClient : boutons START / STOP, vitesse, vie du Core, vague en cours, résumé de session
+-- WaveClient : colonne de droite (START / END, vitesse, zombies restants, vague, Core) et résumé de session
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -22,29 +22,89 @@ local gui = create("ScreenGui", {
 	Parent = player:WaitForChild("PlayerGui"),
 })
 
----------------------------------------------------------------- vague, zombies restants, vie du Core (en bas au milieu, au-dessus du ROLL)
+---------------------------------------------------------------- colonne de droite : START / END, vitesse, zombies restants, vague, Core
 
-local wavePanel = create("Frame", {
+local rightColumn = create("Frame", {
 	Parent = gui,
-	AnchorPoint = Vector2.new(0.5, 1),
-	Position = UDim2.new(0.5, 0, 1, -114),
-	Size = UDim2.new(0, 310, 0, 64),
-	BackgroundColor3 = UIKit.PANEL_COLOR,
-	BorderSizePixel = 0,
-}, { corner(14), stroke(3), UIKit.shine(Color3.fromRGB(165, 165, 185)) })
-UIKit.addStuds(wavePanel, 4)
-
-local waveLabel = UIKit.label({
-	Parent = wavePanel,
-	Position = UDim2.new(0, 12, 0, 6),
-	Size = UDim2.new(1, -24, 0, 26),
-	Text = "🌊 WAVE 1",
+	AnchorPoint = Vector2.new(1, 0.5),
+	Position = UDim2.new(1, -16, 0.5, 0),
+	Size = UDim2.new(0, 230, 0, 1),
+	BackgroundTransparency = 1,
 })
 
+local startButton = makeButton({
+	Parent = rightColumn,
+	AnchorPoint = Vector2.new(1, 0.5),
+	Position = UDim2.new(1, 0, 0, -80),
+	Size = UDim2.new(0, 220, 0, 62),
+	BackgroundColor3 = UIKit.GREEN,
+	Text = "▶️ Start Wave",
+	Studs = 4,
+})
+
+-- pendant les vagues, START devient END
+local stopButton = makeButton({
+	Parent = rightColumn,
+	AnchorPoint = Vector2.new(1, 0.5),
+	Position = UDim2.new(1, 0, 0, -80),
+	Size = UDim2.new(0, 220, 0, 62),
+	BackgroundColor3 = UIKit.RED,
+	Text = "⏹️ End Waves",
+	Visible = false,
+	Studs = 4,
+})
+
+local speedButton = makeButton({
+	Parent = rightColumn,
+	AnchorPoint = Vector2.new(1, 0.5),
+	Position = UDim2.new(1, 0, 0, -12),
+	Size = UDim2.new(0, 220, 0, 46),
+	Text = "⏩ x1",
+	Studs = 3,
+})
+
+-- zombies restants
+local enemiesBack, enemiesFill = UIKit.makeBar({
+	Parent = rightColumn,
+	AnchorPoint = Vector2.new(1, 0),
+	Position = UDim2.new(1, 0, 0, 22),
+	Size = UDim2.new(0, 220, 0, 28),
+}, Color3.fromRGB(90, 200, 90))
+
+local enemiesLabel = UIKit.label({
+	Parent = enemiesBack,
+	Position = UDim2.new(0, 0, 0, 3),
+	Size = UDim2.new(1, 0, 1, -6),
+	Text = "🧟 0 left",
+	TextStrokeTransparency = 0,
+})
+
+-- numéro de la vague + teaser du prochain boss
+local waveLabel = UIKit.label({
+	Parent = rightColumn,
+	AnchorPoint = Vector2.new(1, 0),
+	Position = UDim2.new(1, 0, 0, 56),
+	Size = UDim2.new(0, 220, 0, 40),
+	Text = "Wave 1",
+	TextStrokeTransparency = 0,
+})
+
+local bossLabel = UIKit.label({
+	Parent = rightColumn,
+	AnchorPoint = Vector2.new(1, 0),
+	Position = UDim2.new(1, 0, 0, 96),
+	Size = UDim2.new(0, 220, 0, 22),
+	Text = "",
+	TextColor3 = Color3.fromRGB(255, 80, 80),
+	TextStrokeTransparency = 0,
+})
+
+-- vie du Core (pendant les vagues)
 local coreBack, coreFill = UIKit.makeBar({
-	Parent = wavePanel,
-	Position = UDim2.new(0, 12, 0, 36),
-	Size = UDim2.new(1, -24, 0, 20),
+	Parent = rightColumn,
+	AnchorPoint = Vector2.new(1, 0),
+	Position = UDim2.new(1, 0, 0, 126),
+	Size = UDim2.new(0, 220, 0, 24),
 }, CORE_COLOR)
 
 local coreLabel = UIKit.label({
@@ -53,38 +113,6 @@ local coreLabel = UIKit.label({
 	Size = UDim2.new(1, 0, 1, -4),
 	Text = "❤️ Core",
 	TextStrokeTransparency = 0,
-})
-
----------------------------------------------------------------- boutons (à droite, sous Inventory / Index)
-
-local startButton = makeButton({
-	Parent = gui,
-	AnchorPoint = Vector2.new(1, 0.5),
-	Position = UDim2.new(1, -14, 0.5, 102),
-	Size = UDim2.new(0, 150, 0, 56),
-	BackgroundColor3 = UIKit.ORANGE,
-	Text = "▶️ START",
-	Studs = 3,
-})
-
-local stopButton = makeButton({
-	Parent = gui,
-	AnchorPoint = Vector2.new(1, 0.5),
-	Position = UDim2.new(1, -14, 0.5, 102),
-	Size = UDim2.new(0, 150, 0, 56),
-	BackgroundColor3 = UIKit.RED,
-	Text = "⏹️ STOP",
-	Visible = false,
-	Studs = 3,
-})
-
-local speedButton = makeButton({
-	Parent = gui,
-	AnchorPoint = Vector2.new(1, 0.5),
-	Position = UDim2.new(1, -14, 0.5, 170),
-	Size = UDim2.new(0, 150, 0, 56),
-	Text = "⏩ x1",
-	Studs = 3,
 })
 
 ---------------------------------------------------------------- message "vague terminée"
@@ -199,22 +227,25 @@ local function update()
 	local isOwner = gridInfo:GetAttribute("OwnerUserId") == player.UserId
 
 	local nextWaveIn = waveInfo:GetAttribute("NextWaveIn") or 0
-	if phase == "Wave" and nextWaveIn > 0 then
-		waveLabel.Text = string.format("⏳ WAVE %d dans %d...", wave, nextWaveIn)
-	elseif phase == "Wave" then
-		waveLabel.Text = string.format("🌊 WAVE %d   🧟 %d", wave, waveInfo:GetAttribute("EnemiesLeft") or 0)
-	else
-		waveLabel.Text = string.format("🌊 WAVE %d", wave)
-	end
+	local enemiesLeft = waveInfo:GetAttribute("EnemiesLeft") or 0
+	local waveTotal = math.max(1, waveInfo:GetAttribute("WaveTotal") or 1)
+	local inWaves = phase == "Wave"
+
+	waveLabel.Text = if inWaves and nextWaveIn > 0 then string.format("Wave %d dans %d...", wave, nextWaveIn) else "Wave " .. wave
+	local bossWave = math.ceil(wave / 10) * 10
+	bossLabel.Text = if bossWave == wave then "🐙 ??? CETTE VAGUE !" else string.format("🐙 ??? à la vague %d", bossWave)
+
+	enemiesBack.Visible = inWaves and nextWaveIn <= 0
+	enemiesLabel.Text = string.format("🧟 %d left", enemiesLeft)
+	enemiesFill.Size = UDim2.fromScale(math.clamp(enemiesLeft / waveTotal, 0, 1), 1)
 
 	coreBack.Visible = phase ~= "Build"
-	wavePanel.Size = UDim2.new(0, 310, 0, if phase == "Build" then 38 else 64)
 	coreFill.Size = UDim2.fromScale(if coreMaxHP > 0 then math.clamp(coreHP / coreMaxHP, 0, 1) else 0, 1)
 	coreLabel.Text = string.format("❤️ %d / %d", coreHP, coreMaxHP)
 
 	startButton.Visible = phase == "Build" and isOwner
-	stopButton.Visible = phase == "Wave" and isOwner
-	speedButton.Visible = phase == "Wave" and isOwner
+	stopButton.Visible = inWaves and isOwner
+	speedButton.Visible = inWaves and isOwner
 	speedButton.Text = "⏩ x" .. (waveInfo:GetAttribute("Speed") or 1)
 	speedButton.BackgroundColor3 = if waveInfo:GetAttribute("Speed") == 2 then UIKit.BLUE else UIKit.BUTTON_COLOR
 

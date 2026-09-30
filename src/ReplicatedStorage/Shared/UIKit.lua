@@ -147,6 +147,48 @@ function UIKit.makeButton(props)
 	return button
 end
 
+-- Bouton-icône (grosse icône + nom dessous), pour la barre du bas
+-- props : comme makeButton, plus Icon et Label. Retourne (bouton, texte de l'icône, texte du nom)
+function UIKit.makeIconButton(props)
+	local icon, labelText = props.Icon, props.Label
+	props.Icon, props.Label = nil, nil
+	props.Text = ""
+	local button = UIKit.makeButton(props)
+	local iconLabel = UIKit.label({
+		Parent = button,
+		Position = UDim2.fromScale(0, 0),
+		Size = UDim2.fromScale(1, 0.64),
+		Text = icon,
+	})
+	local nameLabel = UIKit.label({
+		Parent = button,
+		Position = UDim2.fromScale(0, 0.64),
+		Size = UDim2.fromScale(1, 0.36),
+		Text = labelText,
+		TextStrokeTransparency = 0,
+	})
+	return button, iconLabel, nameLabel
+end
+
+-- Pastille ronde avec un nombre (ex : améliorations disponibles), en haut à droite d'un bouton
+function UIKit.makeCountBadge(parent)
+	local badge = create("TextLabel", {
+		Parent = parent,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(1, -4, 0, 4),
+		Size = UDim2.fromOffset(30, 30),
+		BackgroundColor3 = UIKit.RED,
+		BorderSizePixel = 0,
+		Text = "",
+		TextColor3 = UIKit.WHITE,
+		Font = UIKit.TITLE_FONT,
+		TextScaled = true,
+		Visible = false,
+		ZIndex = 3,
+	}, { create("UICorner", { CornerRadius = UDim.new(0.5, 0) }), UIKit.stroke(2, UIKit.WHITE), UIKit.padding(4) })
+	return badge
+end
+
 -- Barre de progression ; retourne (fond, remplissage)
 function UIKit.makeBar(props, fillColor)
 	props.BackgroundColor3 = UIKit.DARK

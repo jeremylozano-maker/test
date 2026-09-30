@@ -47,6 +47,13 @@ Color3 = {
 	fromHSV = function() return Color3.new(1, 1, 1) end,
 }
 ColorSequence = { new = function(a, b) return { a, b } end }
+Vector3 = { new = function(x, y, z) return { X = x or 0, Y = y or 0, Z = z or 0 } end }
+local CFrameMT = {}
+CFrameMT.__mul = function(a) return a end
+CFrame = {
+	new = function(...) return setmetatable({ ... }, CFrameMT) end,
+	Angles = function(...) return setmetatable({ ... }, CFrameMT) end,
+}
 TweenInfo = { new = function(...) return { ... } end }
 Enum = setmetatable({}, { __index = function(_, category)
 	return setmetatable({}, { __index = function(_, item) return category .. "." .. item end })
@@ -96,6 +103,9 @@ function methods:FindFirstChildWhichIsA(className)
 	return nil
 end
 methods.FindFirstChildOfClass = methods.FindFirstChildWhichIsA
+function methods:Fire(...)
+	self.Event:Fire(...)
+end
 function methods:Destroy()
 	self.Parent = nil
 end
@@ -181,7 +191,7 @@ local RunService = service("RunService")
 rawget(RunService, "__props").IsStudio = function() return true end
 rawget(RunService, "__props").RenderStepped = newSignal()
 local UIS = service("UserInputService")
-for _, name in { "InputBegan", "InputChanged", "InputEnded", "TouchPinch" } do
+for _, name in { "InputBegan", "InputChanged", "InputEnded", "TouchPinch", "TouchTapInWorld" } do
 	rawget(UIS, "__props")[name] = newSignal()
 end
 rawget(UIS, "__props").TouchEnabled = false
@@ -196,9 +206,20 @@ playerGui.Parent = localPlayer
 rawget(Players, "__props").LocalPlayer = localPlayer
 
 ---------------------------------------------------------------- tâches (exécution immédiate)
+-- une tâche s'exécute jusqu'à son premier task.wait, puis reste en pause (évite les boucles infinies)
 task = {
 	spawn = function(fn, ...) coroutine.wrap(fn)(...) end,
 	defer = function(fn, ...) coroutine.wrap(fn)(...) end,
 	delay = function(_, fn, ...) coroutine.wrap(fn)(...) end,
-	wait = function() return 0 end,
+	wait = function()
+		if coroutine.isyieldable() then
+			coroutine.yield()
+		end
+		return 0
+	end,
 }
+RaycastParams = { new = function() return {} end }
+rawget(service("HttpService"), "__props").JSONDecode = function(_, text) return _G_JSON and _G_JSON[text] or {} end
+local workspaceInstance = service("Workspace")
+workspace = workspaceInstance
+rawget(workspaceInstance, "__props").CurrentCamera = Instance.new("Camera")

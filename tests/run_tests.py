@@ -21,7 +21,7 @@ LOGIC = {
 UI = {
     "Items": SHARED + "Items.lua", "Rarities": SHARED + "Rarities.lua",
     "SkillTreeConfig": SHARED + "SkillTreeConfig.lua", "SkillTree": SHARED + "SkillTree.lua",
-    "UIKit": SHARED + "UIKit.lua", "HexUI": SHARED + "HexUI.lua",
+    "UIKit": SHARED + "UIKit.lua", "HexUI": SHARED + "HexUI.lua", "HudState": SHARED + "HudState.lua",
     "SkillService": "ServerScriptService/Services/SkillService.lua",
     "SkillTreeClient": "StarterPlayerScripts/SkillTreeClient.client.lua",
 }
@@ -35,6 +35,18 @@ def run(prelude, modules, test_file, extra=""):
     print(result.stdout[-3000:], result.stderr[-3000:])
     return "0 échoués" in result.stdout
 
+HUD = {
+    "Items": SHARED + "Items.lua", "Rarities": SHARED + "Rarities.lua", "RollMath": SHARED + "RollMath.lua",
+    "SkillTreeConfig": SHARED + "SkillTreeConfig.lua", "SkillTree": SHARED + "SkillTree.lua",
+    "UIKit": SHARED + "UIKit.lua", "HudState": SHARED + "HudState.lua", "Grid": SHARED + "Grid.lua",
+    "ItemVisuals": SHARED + "ItemVisuals.lua",
+    "RollClient": "StarterPlayerScripts/RollClient.client.lua",
+    "WaveClient": "StarterPlayerScripts/WaveClient.client.lua",
+    "BuildClient": "StarterPlayerScripts/BuildClient.client.lua",
+    "SwordClient": "StarterPlayerScripts/SwordClient.client.lua",
+}
+
 ok = run("prelude.luau", LOGIC, "skilltree_tests.luau")
+ok = run("fakeroblox.luau", HUD, "hud_tests.luau", "Modules = {}") and ok
 ok = run("fakeroblox.luau", UI, "ui_tests.luau", "Modules = {}") and ok
 sys.exit(0 if ok else 1)

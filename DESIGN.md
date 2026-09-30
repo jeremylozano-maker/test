@@ -64,3 +64,9 @@ Niveaux sauvegardés dans `data.Skills[skillId]` (DataService). Achat validé pa
 3. Core + zombies + vagues + défenses + gravité + respawn fin de vague + écran de mort ✅
 4. Coins + écran de mort + Skill Tree UI
 5. Boss, ennemis, épée, effets, mobile, événements
+
+## Mise en page du HUD (HudState : Main / Roll / Build)
+- Gauche, milieu : Coins, Index, Inventory, épée.
+- Bas, milieu : Build | ROLL | Skills. ROLL ouvre la fenêtre des dés : Auto Roll | ROLL | Close.
+- Build : fenêtre des objets en grille à gauche (onglets, Clear plot, Tri), Exit | Delete en bas, compteur « placés / max » au-dessus.
+- Droite, milieu : Start Wave (devient End Waves), vitesse, zombies restants, numéro de vague, teaser boss, vie du Core.

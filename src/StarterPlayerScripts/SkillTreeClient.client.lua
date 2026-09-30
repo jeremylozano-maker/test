@@ -15,6 +15,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local SkillTree = require(Shared:WaitForChild("SkillTree"))
 local UIKit = require(Shared:WaitForChild("UIKit"))
 local HexUI = require(Shared:WaitForChild("HexUI"))
+local HudState = require(Shared:WaitForChild("HudState"))
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 
 local Config = SkillTree.Config
@@ -88,7 +89,7 @@ local function getCoins()
 	return state.Snapshot and state.Snapshot.Coins or 0
 end
 
----------------------------------------------------------------- bouton d'ouverture (HUD, à gauche)
+---------------------------------------------------------------- bouton d'ouverture (en bas, à droite du ROLL)
 
 local hudGui = create("ScreenGui", {
 	Name = "SkillsButtonUI",
@@ -96,25 +97,26 @@ local hudGui = create("ScreenGui", {
 	Parent = player:WaitForChild("PlayerGui"),
 })
 
-local openButton = makeButton({
+local openButton = UIKit.makeIconButton({
 	Parent = hudGui,
-	AnchorPoint = Vector2.new(0, 0.5),
-	Position = UDim2.new(0, 14, 0.5, 184),
-	Size = UDim2.new(0, 150, 0, 56),
-	BackgroundColor3 = Color3.fromRGB(40, 175, 150),
-	Text = "🌳 SKILLS",
-	Studs = 3,
+	AnchorPoint = Vector2.new(0, 1),
+	Position = UDim2.new(0.5, 80, 1, -16),
+	Size = UDim2.new(0, 104, 0, 96),
+	BackgroundColor3 = UIKit.PURPLE,
+	Icon = "⬆️",
+	Label = "Skills",
+	Studs = 2,
 })
 
--- petit point vert quand une amélioration est achetable
-local openBadge = create("Frame", {
-	Parent = openButton,
-	AnchorPoint = Vector2.new(0.5, 0.5),
-	Position = UDim2.new(1, 0, 0, 0),
-	Size = UDim2.fromOffset(18, 18),
-	BackgroundColor3 = UIKit.GREEN,
-	Visible = false,
-}, { UIKit.corner(9), stroke(2) })
+-- nombre d'améliorations achetables maintenant
+local openBadge = UIKit.makeCountBadge(openButton)
+
+-- visible seulement sur l'écran normal (caché pendant la fenêtre des dés et la construction)
+local function applyHudMode(hudMode)
+	openButton.Visible = hudMode == "Main"
+end
+HudState.Changed:Connect(applyHudMode)
+applyHudMode(HudState.Mode)
 
 ---------------------------------------------------------------- écran plein
 
@@ -729,13 +731,14 @@ local function renderAll()
 	renderHub()
 	renderCoins()
 	renderInfo()
-	local anyReady = false
+	local readyCount = 0
 	for skillId in nodes do
 		if SkillTree.CanUpgrade(getSkills(), getCoins(), skillId) == true then
-			anyReady = true
+			readyCount += 1
 		end
 	end
-	openBadge.Visible = anyReady
+	openBadge.Text = tostring(readyCount)
+	openBadge.Visible = readyCount > 0
 end
 
 ---------------------------------------------------------------- ouverture / fermeture

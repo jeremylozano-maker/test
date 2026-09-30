@@ -9,7 +9,7 @@ function require(moduleScript)
 end
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local shared = Instance.new("Folder"); shared.Name = "Shared"; shared.Parent = ReplicatedStorage
-for _, name in { "Items", "Rarities", "SkillTreeConfig", "SkillTree", "UIKit", "HexUI" } do
+for _, name in { "Items", "Rarities", "SkillTreeConfig", "SkillTree", "UIKit", "HexUI", "HudState" } do
 	local module = Instance.new("ModuleScript"); module.Name = name; module.Parent = shared
 end
 local services = Instance.new("Folder"); services.Name = "Services"
@@ -52,7 +52,7 @@ check("SkillTreeClient s'exécute sans erreur : " .. tostring(err), ok)
 local treeGui = playerGui:FindFirstChild("SkillTreeUI")
 local hudGui = playerGui:FindFirstChild("SkillsButtonUI")
 check("écran SkillTreeUI créé", treeGui ~= nil)
-check("bouton 🌳 SKILLS créé", hudGui ~= nil)
+check("bouton Skills créé", hudGui ~= nil)
 
 local function findText(root, predicate)
 	for _, object in root:GetDescendants() do
@@ -73,7 +73,17 @@ end
 check("12 hexagones créés", nodeCount == 12)
 check("fermé au départ", treeGui.Enabled == false)
 
-local openButton = findText(hudGui, function(text) return text == "🌳 SKILLS" end)
+local openButton = findText(hudGui, function(text) return text == "Skills" end).Parent
+check("bouton Skills visible sur l'écran normal", openButton.Visible == true)
+local HudState = require(shared.HudState)
+HudState.SetMode("Build")
+check("bouton Skills caché en construction", openButton.Visible == false)
+HudState.SetMode("Roll")
+check("bouton Skills caché pendant les dés", openButton.Visible == false)
+HudState.SetMode("Main")
+check("bouton Skills réapparaît", openButton.Visible == true)
+local badge = findText(openButton, function(text) return tonumber(text) ~= nil end)
+check("pastille : nombre d'améliorations achetables", badge ~= nil and badge.Visible and tonumber(badge.Text) > 0)
 openButton.Activated:Fire()
 check("ouvert après clic sur SKILLS", treeGui.Enabled == true)
 check("Coins affichés 1,000", findText(treeGui, function(text) return text == "🪙 1,000" end) ~= nil)

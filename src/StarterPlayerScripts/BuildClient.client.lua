@@ -15,6 +15,7 @@ local Grid = require(Shared:WaitForChild("Grid"))
 local SkillTree = require(Shared:WaitForChild("SkillTree"))
 local ItemVisuals = require(Shared:WaitForChild("ItemVisuals"))
 local UIKit = require(Shared:WaitForChild("UIKit"))
+local HudState = require(Shared:WaitForChild("HudState"))
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 
 local create, makeButton = UIKit.create, UIKit.makeButton
@@ -113,6 +114,8 @@ local function showRange(itemId, x, z)
 end
 
 ---------------------------------------------------------------- UI
+-- Écran normal : bouton Build en bas (à gauche du ROLL).
+-- Mode construction : fenêtre des objets à gauche, Exit | Delete en bas au milieu, compteur au-dessus.
 
 local gui = create("ScreenGui", {
 	Name = "BuildUI",
@@ -121,34 +124,58 @@ local gui = create("ScreenGui", {
 	Parent = player:WaitForChild("PlayerGui"),
 })
 
-local BUILD_IDLE = UIKit.darken(UIKit.GREEN, 0.4)
-local DELETE_IDLE = UIKit.darken(UIKit.RED, 0.4)
-
-local buildButton = makeButton({
+local buildButton = UIKit.makeIconButton({
 	Parent = gui,
-	AnchorPoint = Vector2.new(0, 0.5),
-	Position = UDim2.new(0, 14, 0.5, -34),
-	Size = UDim2.new(0, 150, 0, 56),
-	BackgroundColor3 = BUILD_IDLE,
-	Text = "🔨 BUILD",
-	Studs = 3,
+	AnchorPoint = Vector2.new(1, 1),
+	Position = UDim2.new(0.5, -80, 1, -16),
+	Size = UDim2.new(0, 104, 0, 96),
+	BackgroundColor3 = UIKit.ORANGE,
+	Icon = "🔨",
+	Label = "Build",
+	Studs = 2,
 })
 
-local deleteButton = makeButton({
+local exitButton = UIKit.makeIconButton({
 	Parent = gui,
-	AnchorPoint = Vector2.new(0, 0.5),
-	Position = UDim2.new(0, 14, 0.5, 34),
-	Size = UDim2.new(0, 150, 0, 56),
+	AnchorPoint = Vector2.new(1, 1),
+	Position = UDim2.new(0.5, -8, 1, -16),
+	Size = UDim2.new(0, 104, 0, 96),
+	BackgroundColor3 = UIKit.ORANGE,
+	Icon = "🔨",
+	Label = "Exit",
+	Visible = false,
+	Studs = 2,
+})
+
+local DELETE_IDLE = UIKit.darken(UIKit.RED, 0.4)
+local deleteButton = UIKit.makeIconButton({
+	Parent = gui,
+	AnchorPoint = Vector2.new(0, 1),
+	Position = UDim2.new(0.5, 8, 1, -16),
+	Size = UDim2.new(0, 104, 0, 96),
 	BackgroundColor3 = DELETE_IDLE,
-	Text = "🗑️ DELETE",
-	Studs = 3,
+	Icon = "🗑️",
+	Label = "Delete",
+	Visible = false,
+	Studs = 2,
+})
+
+-- Compteur "12 / 40" au-dessus de Exit | Delete (rouge quand l'île est pleine)
+local counterLabel = UIKit.label({
+	Parent = gui,
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 1, -122),
+	Size = UDim2.new(0, 260, 0, 56),
+	Text = "",
+	TextStrokeTransparency = 0,
+	Visible = false,
 })
 
 -- Sur mobile : on touche une case, puis on confirme avec ce bouton
 local confirmButton = makeButton({
 	Parent = gui,
 	AnchorPoint = Vector2.new(0.5, 1),
-	Position = UDim2.new(0.5, 0, 1, -200),
+	Position = UDim2.new(0.5, 0, 1, -186),
 	Size = UDim2.new(0, 210, 0, 58),
 	BackgroundColor3 = UIKit.GREEN,
 	Text = "✔ PLACE",
@@ -156,54 +183,23 @@ local confirmButton = makeButton({
 	Studs = 3,
 })
 
--- Compteur d'objets posés / maximum (en haut, visible en BUILD et DELETE)
-local counterPill = create("Frame", {
-	Parent = gui,
-	AnchorPoint = Vector2.new(0.5, 0),
-	Position = UDim2.new(0.5, 0, 0, 222),
-	Size = UDim2.new(0, 250, 0, 46),
-	BackgroundColor3 = UIKit.PANEL_COLOR,
-	BorderSizePixel = 0,
-	Visible = false,
-}, { UIKit.corner(14), UIKit.stroke(3), UIKit.shine() })
-UIKit.addStuds(counterPill, 3)
-local counterLabel = UIKit.label({
-	Parent = counterPill,
-	Position = UDim2.new(0, 10, 0, 6),
-	Size = UDim2.new(1, -20, 1, -12),
-	Text = "",
-})
-
--- 🧹 VIDER : tout remettre dans l'inventaire (2 clics pour confirmer)
-local CLEAR_CONFIRM_TIME = 3 -- secondes pour confirmer
-local clearButton = makeButton({
-	Parent = gui,
-	AnchorPoint = Vector2.new(0, 0),
-	Position = UDim2.new(0.5, 135, 0, 222),
-	Size = UDim2.new(0, 130, 0, 46),
-	BackgroundColor3 = UIKit.RED,
-	Text = "🧹 VIDER",
-	Visible = false,
-	Studs = 2,
-})
-local clearConfirmUntil = 0
-
+-- Fenêtre des objets (à gauche)
 local buildPanel, buildBody, _, _, buildClose = UIKit.makePanel({
 	Parent = gui,
-	Title = "🔨 BUILD",
-	Accent = UIKit.GREEN,
-	AnchorPoint = Vector2.new(1, 0.5),
-	Position = UDim2.new(1, -178, 0.5, 0),
-	Size = UDim2.fromScale(0.32, 0.72),
-	MinSize = Vector2.new(260, 240),
-	MaxSize = Vector2.new(430, 580),
+	Title = "🔨 Build Mode",
+	Accent = UIKit.ORANGE,
+	AnchorPoint = Vector2.new(0, 0.5),
+	Position = UDim2.new(0, 16, 0.5, -20),
+	Size = UDim2.fromScale(0.3, 0.74),
+	MinSize = Vector2.new(300, 320),
+	MaxSize = Vector2.new(430, 620),
 })
 
 -- Onglets en haut de la fenêtre : un par catégorie
 local TABS = {
-	{ Category = "Block", Text = "🧱 BLOCKS" },
-	{ Category = "Weapon", Text = "⚔️ WEAPONS" },
-	{ Category = "Trap", Text = "🔺 TRAPS" },
+	{ Category = "Block", Text = "🧱 Blocks" },
+	{ Category = "Weapon", Text = "⚔️ Weapons" },
+	{ Category = "Trap", Text = "🔺 Traps" },
 }
 
 local tabBar = create("Frame", {
@@ -228,11 +224,43 @@ for order, tab in TABS do
 	})
 end
 
--- Tri de la liste : chaque clic sur le bouton passe au tri suivant (du plus grand au plus petit)
--- Stat = statistique affichée sur chaque ligne pendant ce tri
+-- Grille des objets (3 par ligne)
+local itemGrid = create("ScrollingFrame", {
+	Parent = buildBody,
+	Position = UDim2.new(0, 0, 0, 48),
+	Size = UDim2.new(1, 0, 1, -100),
+	BackgroundTransparency = 1,
+	BorderSizePixel = 0,
+	ScrollBarThickness = 6,
+	ScrollBarImageColor3 = UIKit.GREY,
+	CanvasSize = UDim2.new(),
+	AutomaticCanvasSize = Enum.AutomaticSize.Y,
+}, {
+	create("UIGridLayout", {
+		CellSize = UDim2.new(1 / 3, -8, 0, 108),
+		CellPadding = UDim2.fromOffset(6, 6),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+	}),
+	create("UIPadding", { PaddingTop = UDim.new(0, 4), PaddingLeft = UDim.new(0, 3), PaddingRight = UDim.new(0, 3) }),
+})
+
+-- Bas de la fenêtre : Vider (2 clics) et Tri
+local CLEAR_CONFIRM_TIME = 3 -- secondes pour confirmer
+local clearButton = makeButton({
+	Parent = buildBody,
+	AnchorPoint = Vector2.new(0, 1),
+	Position = UDim2.new(0, 0, 1, 0),
+	Size = UDim2.new(0.5, -4, 0, 44),
+	BackgroundColor3 = UIKit.RED,
+	Text = "🧹 Clear plot",
+})
+local clearConfirmUntil = 0
+
+-- Tri : chaque clic passe au tri suivant (du plus grand au plus petit)
+-- Stat = statistique affichée sur chaque case pendant ce tri
 local SORTS = {
 	{ Label = "⭐ Rareté", Value = function(item) return Rarities.Info[item.Rarity].Rank end },
-	{ Label = "❤️ Points de vie", Stat = "HP", Icon = "❤️" },
+	{ Label = "❤️ PV", Stat = "HP", Icon = "❤️" },
 	{ Label = "💥 Dégâts", Stat = "Damage", Icon = "💥" },
 	{ Label = "🎯 Portée", Stat = "Range", Icon = "🎯" },
 	{ Label = "📦 Quantité", Value = function(item) return state.Inventory[item.Id] or 0 end },
@@ -240,15 +268,11 @@ local SORTS = {
 
 local sortButton = makeButton({
 	Parent = buildBody,
-	Position = UDim2.new(0, 0, 0, 48),
-	Size = UDim2.new(1, 0, 0, 34),
+	AnchorPoint = Vector2.new(1, 1),
+	Position = UDim2.new(1, 0, 1, 0),
+	Size = UDim2.new(0.5, -4, 0, 44),
+	BackgroundColor3 = UIKit.PURPLE,
 	Text = "",
-})
-
-local buildList = UIKit.makeList({
-	Parent = buildBody,
-	Position = UDim2.new(0, 0, 0, 90),
-	Size = UDim2.new(1, 0, 1, -90),
 })
 
 local function sortValue(sort, item)
@@ -281,21 +305,74 @@ local function sortedTabItems()
 	return list
 end
 
-local selectItem -- défini plus bas
+local selectItem, setMode -- définis plus bas
 
 -- Build Capacity : objets posés / maximum
 local function isAtCapacity()
 	return #placedFolder:GetChildren() >= SkillTree.GetBuildCapacity(state.Skills)
 end
 
--- 📦 objets posés / maximum ; rouge quand l'île est pleine (améliorable avec Build Capacity)
+-- "12 / 40" ; rouge quand l'île est pleine (améliorable avec Build Capacity dans le Skill Tree)
 local function renderCounter()
-	counterPill.Visible = state.Mode ~= nil
-	clearButton.Visible = state.Mode ~= nil and #placedFolder:GetChildren() > 0
-	local full = isAtCapacity()
-	counterLabel.Text = string.format("📦 %d / %d objets%s", #placedFolder:GetChildren(),
-		SkillTree.GetBuildCapacity(state.Skills), if full then "  • PLEIN" else "")
-	counterPill.BackgroundColor3 = if full then UIKit.darken(UIKit.RED, 0.2) else UIKit.PANEL_COLOR
+	counterLabel.Visible = state.Mode ~= nil
+	counterLabel.Text = string.format("%d / %d", #placedFolder:GetChildren(), SkillTree.GetBuildCapacity(state.Skills))
+	counterLabel.TextColor3 = if isAtCapacity() then Color3.fromRGB(255, 70, 70) else UIKit.WHITE
+end
+
+-- Une case de la grille : icône, nom, quantité, bordure de la couleur de la rareté
+local function makeTile(item, order, sort)
+	local rarityColor = Rarities.Info[item.Rarity].Color
+	local isSelected = item.Id == state.SelectedId
+	local tile = create("TextButton", {
+		Parent = itemGrid,
+		LayoutOrder = order,
+		BackgroundColor3 = if isSelected then UIKit.darken(UIKit.GREEN, 0.35) else UIKit.PANEL_DARK,
+		AutoButtonColor = false,
+		Text = "",
+		BorderSizePixel = 0,
+	}, {
+		UIKit.corner(10),
+		UIKit.stroke(if isSelected then 4 else 3, if isSelected then UIKit.GREEN else rarityColor),
+		UIKit.shine(Color3.fromRGB(190, 190, 205)),
+	})
+	UIKit.label({ Parent = tile, Position = UDim2.fromScale(0.1, 0.1), Size = UDim2.fromScale(0.8, 0.5), Text = item.Icon })
+	UIKit.label({
+		Parent = tile,
+		Position = UDim2.fromScale(0.04, 0.66),
+		Size = UDim2.fromScale(0.92, 0.26),
+		Text = item.Name,
+		Font = UIKit.TEXT_FONT,
+		TextStrokeTransparency = 0,
+	})
+	UIKit.label({
+		Parent = tile,
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -4, 0, 2),
+		Size = UDim2.fromScale(0.5, 0.22),
+		Text = "×" .. state.Inventory[item.Id],
+		Rotation = 8,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		TextStrokeTransparency = 0,
+	})
+	local statValue = sort.Stat and item.Stats[sort.Stat]
+	if statValue then
+		UIKit.label({
+			Parent = tile,
+			Position = UDim2.new(0, 4, 0, 2),
+			Size = UDim2.fromScale(0.5, 0.2),
+			Text = string.format("%s%g", sort.Icon, statValue),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Font = UIKit.TEXT_FONT,
+		})
+	end
+	UIKit.addPressEffect(tile)
+	tile.Activated:Connect(function()
+		-- choisir un objet depuis le mode Delete repasse en placement
+		if state.Mode == "Delete" then
+			setMode("Build")
+		end
+		selectItem(if isSelected then nil else item.Id)
+	end)
 end
 
 local function renderBuildPanel()
@@ -303,31 +380,16 @@ local function renderBuildPanel()
 		button.BackgroundColor3 = if category == state.Tab then UIKit.GREEN else UIKit.BUTTON_COLOR
 	end
 	local sort = SORTS[state.SortIndex]
-	sortButton.Text = "↕️ Tri : " .. sort.Label
-	UIKit.clearList(buildList)
-	local order = 0
-	for _, item in sortedTabItems() do
-		order += 1
-		local isSelected = item.Id == state.SelectedId
-		local statValue = sort.Stat and item.Stats[sort.Stat]
-		local row = UIKit.itemRow({
-			Parent = buildList,
-			LayoutOrder = order,
-			Text = item.Icon .. " " .. item.Name .. (if statValue then string.format("   %s %g", sort.Icon, statValue) else ""),
-			Color = Rarities.Info[item.Rarity].Color,
-			Badge = "×" .. state.Inventory[item.Id],
-			Selected = isSelected,
-			Clickable = true,
-		})
-		row.Activated:Connect(function()
-			selectItem(if isSelected then nil else item.Id)
-		end)
+	sortButton.Text = "↕️ " .. sort.Label
+	UIKit.clearList(itemGrid)
+	local items = sortedTabItems()
+	for order, item in items do
+		makeTile(item, order, sort)
 	end
-	if order == 0 then
+	if #items == 0 then
 		UIKit.label({
-			Parent = buildList,
-			Size = UDim2.new(1, -10, 0, 60),
-			Text = "Rien dans cette catégorie.\nFais des 🎲 ROLL !",
+			Parent = itemGrid,
+			Text = "Rien ici.\nFais des 🎲 ROLL !",
 			TextColor3 = UIKit.GREY,
 			Font = UIKit.TEXT_FONT,
 		})
@@ -338,13 +400,6 @@ sortButton.Activated:Connect(function()
 	state.SortIndex = state.SortIndex % #SORTS + 1
 	renderBuildPanel()
 end)
-
-for category, button in tabButtons do
-	button.Activated:Connect(function()
-		state.Tab = category
-		renderBuildPanel()
-	end)
-end
 
 ---------------------------------------------------------------- fantôme et cibles
 
@@ -502,46 +557,46 @@ end
 
 ---------------------------------------------------------------- modes
 
-local function closeOtherPanels()
-	local islandUI = player.PlayerGui:FindFirstChild("IslandUI")
-	if not islandUI then
-		return
-	end
-	for _, child in islandUI:GetChildren() do
-		if child:IsA("Frame") and (string.find(child.Name, "INVENTORY", 1, true) or string.find(child.Name, "INDEX", 1, true)) then
-			child.Visible = false
-		end
-	end
-end
-
-local function setMode(mode)
-	if state.Mode == mode then
-		mode = nil
-	end
+-- mode : "Build" (poser), "Delete" (supprimer) ou nil (sortir de la construction)
+function setMode(mode)
 	if mode and (gridInfo:GetAttribute("OwnerUserId") ~= player.UserId or waveInfo:GetAttribute("Phase") ~= "Build") then
 		return
 	end
+	local wasBuilding = state.Mode ~= nil
 	state.Mode = mode
 	state.TouchPoint = nil
 	state.Target = nil
 	deleteHighlight.Adornee = nil
-	selectItem(nil)
+	if mode ~= "Build" then
+		selectItem(nil)
+	end
 
-	buildPanel.Visible = mode == "Build"
-	renderCounter()
-	buildButton.BackgroundColor3 = if mode == "Build" then UIKit.GREEN else BUILD_IDLE
+	buildPanel.Visible = mode ~= nil
+	exitButton.Visible = mode ~= nil
+	deleteButton.Visible = mode ~= nil
 	deleteButton.BackgroundColor3 = if mode == "Delete" then UIKit.RED else DELETE_IDLE
 	confirmButton.BackgroundColor3 = if mode == "Delete" then UIKit.RED else UIKit.GREEN
 	confirmButton.Text = if mode == "Delete" then "🗑️ REMOVE" else "✔ PLACE"
+	renderCounter()
 	if mode then
-		closeOtherPanels()
+		renderBuildPanel()
+		HudState.SetMode("Build")
 		-- on range l'épée pour que le clic serve à construire
 		local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
 		if humanoid then
 			humanoid:UnequipTools()
 		end
+	elseif wasBuilding then
+		HudState.SetMode("Main")
 	end
 end
+
+-- Le bouton Build n'apparaît que sur l'écran normal (caché pendant la fenêtre des dés)
+local function applyHudMode(hudMode)
+	buildButton.Visible = hudMode == "Main"
+end
+HudState.Changed:Connect(applyHudMode)
+applyHudMode(HudState.Mode)
 
 -- Pas de construction pendant une vague
 waveInfo:GetAttributeChangedSignal("Phase"):Connect(function()
@@ -554,8 +609,13 @@ buildButton.Activated:Connect(function()
 	setMode("Build")
 end)
 
+exitButton.Activated:Connect(function()
+	setMode(nil)
+end)
+
+-- Delete : passe en suppression, un 2e clic revient au placement
 deleteButton.Activated:Connect(function()
-	setMode("Delete")
+	setMode(if state.Mode == "Delete" then "Build" else "Delete")
 end)
 
 confirmButton.Activated:Connect(confirmAction)
@@ -564,17 +624,17 @@ clearButton.Activated:Connect(function()
 	if os.clock() > clearConfirmUntil then
 		-- 1er clic : demander confirmation
 		clearConfirmUntil = os.clock() + CLEAR_CONFIRM_TIME
-		clearButton.Text = "⚠️ SÛR ?"
+		clearButton.Text = "⚠️ Sûr ?"
 		task.delay(CLEAR_CONFIRM_TIME, function()
 			if os.clock() >= clearConfirmUntil then
-				clearButton.Text = "🧹 VIDER"
+				clearButton.Text = "🧹 Clear plot"
 			end
 		end)
 		return
 	end
 	-- 2e clic : le serveur retire tout et rend les objets à l'inventaire
 	clearConfirmUntil = 0
-	clearButton.Text = "🧹 VIDER"
+	clearButton.Text = "🧹 Clear plot"
 	deleteHighlight.Adornee = nil
 	state.Target = nil
 	task.spawn(function()
@@ -582,7 +642,7 @@ clearButton.Activated:Connect(function()
 	end)
 end)
 
--- le ✕ de la fenêtre BUILD quitte le mode construction
+-- le ✕ de la fenêtre quitte le mode construction
 buildClose.Activated:Connect(function()
 	setMode(nil)
 end)
@@ -594,9 +654,9 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 and state.Mode then
 		confirmAction()
 	elseif input.KeyCode == Enum.KeyCode.B then
-		setMode("Build")
+		setMode(if state.Mode == "Build" then nil else "Build")
 	elseif input.KeyCode == Enum.KeyCode.X then
-		setMode("Delete")
+		setMode(if state.Mode == "Delete" then "Build" else "Delete")
 	end
 end)
 
@@ -624,22 +684,16 @@ local function applySnapshot(snapshot)
 	renderCounter()
 	if state.SelectedId and (state.Inventory[state.SelectedId] or 0) <= 0 then
 		selectItem(nil)
-	elseif state.Mode == "Build" then
+	elseif state.Mode then
 		renderBuildPanel()
 	end
 end
 
 Remotes.DataSync.OnClientEvent:Connect(applySnapshot)
 
--- le compteur 📦 suit les objets posés / supprimés
-local function refreshIfBuilding()
-	renderCounter()
-	if state.Mode == "Build" then
-		renderBuildPanel()
-	end
-end
-placedFolder.ChildAdded:Connect(refreshIfBuilding)
-placedFolder.ChildRemoved:Connect(refreshIfBuilding)
+-- le compteur suit les objets posés / supprimés
+placedFolder.ChildAdded:Connect(renderCounter)
+placedFolder.ChildRemoved:Connect(renderCounter)
 
 task.spawn(function()
 	local snapshot = Remotes.GetSnapshot:InvokeServer()

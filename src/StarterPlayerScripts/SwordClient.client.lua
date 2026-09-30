@@ -6,6 +6,7 @@ local player = Players.LocalPlayer
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local SkillTree = require(Shared:WaitForChild("SkillTree"))
 local UIKit = require(Shared:WaitForChild("UIKit"))
+local HudState = require(Shared:WaitForChild("HudState"))
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 
 local UPGRADE_COLOR = UIKit.BLUE
@@ -16,11 +17,11 @@ local gui = UIKit.create("ScreenGui", {
 	Parent = player:WaitForChild("PlayerGui"),
 })
 
--- à gauche, sous BUILD / DELETE
+-- colonne de gauche, sous Coins / Index / Inventory
 local upgradeButton = UIKit.makeButton({
 	Parent = gui,
 	AnchorPoint = Vector2.new(0, 0.5),
-	Position = UDim2.new(0, 14, 0.5, 108),
+	Position = UDim2.new(0, 16, 0.5, 100),
 	Size = UDim2.new(0, 150, 0, 66),
 	BackgroundColor3 = UPGRADE_COLOR,
 	Text = "⚔️ SWORD",
@@ -44,6 +45,13 @@ local function render()
 		upgradeButton.BackgroundColor3 = UIKit.BUTTON_COLOR
 	end
 end
+
+-- caché en mode construction (la fenêtre des objets occupe la gauche)
+local function applyHudMode(hudMode)
+	upgradeButton.Visible = hudMode ~= "Build"
+end
+HudState.Changed:Connect(applyHudMode)
+applyHudMode(HudState.Mode)
 
 upgradeButton.Activated:Connect(function()
 	Remotes.PurchaseSkill:InvokeServer("Sword")
