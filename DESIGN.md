@@ -6,6 +6,9 @@
   - Blocs empilables. Une arme peut être au sol ou sur un bloc. Rien au-dessus d'une arme.
   - Pièges : au sol uniquement, rien au-dessus, les zombies ne les ciblent pas.
   - Gravité : si un bloc est détruit, tout ce qui est au-dessus descend d'un étage.
+- Core : case (7,5) au centre. On ne construit pas sur sa case, mais on peut empiler au-dessus de lui.
+  Il occupe 1 ou 2 étages selon sa hauteur (forçable avec l'attribut `GridLevels` sur workspace.Core).
+- La hauteur de placement est automatique : l'objet va sur le haut de la colonne visée.
 - Objets détruits pendant une vague : ils réapparaissent à la fin de la vague.
 - Zombies : vont toujours vers l'objet (ciblable) le plus proche, sinon le Core.
 - Mort : fenêtre de stats (zombies tués, coins gagnés, vagues survécues).
@@ -38,7 +41,7 @@ Coins par vague = 10 + 5 × numéro de vague, ×3 sur les vagues de boss (toutes
 
 ## Phases
 1. Configs + sauvegarde + Roll + Inventaire + Index ✅
-2. Build / Delete sur le Damier (ghost, snap, ploc, empilement)
+2. Build / Delete sur le Damier (ghost, snap, ploc, empilement) ✅
 3. Core + zombies + vagues + défenses + gravité + respawn fin de vague
 4. Coins + écran de mort + Skill Tree UI
 5. Boss, ennemis, épée, effets, mobile, événements
