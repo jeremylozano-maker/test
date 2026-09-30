@@ -89,8 +89,10 @@ check("AutoRoll niv.1 = true", SkillTree.HasAutoRoll({ AutoRoll = 1 }) == true)
 
 ------------------------------------------------------------------------
 section("Effets Island")
-check("Build Capacity base = 60", SkillTree.GetBuildCapacity({}) == 60)
-check("Build Capacity niv.10 = 160", SkillTree.GetBuildCapacity({ BuildCapacity = 10 }) == 160)
+check("Build Capacity base = 40", SkillTree.GetBuildCapacity({}) == 40)
+check("Build Capacity niv.1 = 50", SkillTree.GetBuildCapacity({ BuildCapacity = 1 }) == 50)
+check("Build Capacity niv.20 = 240", SkillTree.GetBuildCapacity({ BuildCapacity = 20 }) == 240)
+check("Build Capacity sans prérequis", SkillTree.GetNodeState({}, "BuildCapacity") == "Available")
 check("Build Height base = 3", SkillTree.GetMaxBuildHeight({}) == 3)
 check("Build Height niv.2 = 5", SkillTree.GetMaxBuildHeight({ BuildHeight = 2 }) == 5)
 

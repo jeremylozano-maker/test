@@ -210,6 +210,8 @@ end
 
 local function renderBuildPanel()
 	buildTitle.Text = string.format("🔨 BUILD   📦 %d/%d", #placedFolder:GetChildren(), SkillTree.GetBuildCapacity(state.Skills))
+	-- en rouge quand l'île est pleine (améliorable avec Build Capacity dans le Skill Tree)
+	buildTitle.TextColor3 = if isAtCapacity() then Color3.fromRGB(255, 120, 120) else UIKit.WHITE
 	for category, button in tabButtons do
 		button.BackgroundColor3 = if category == state.Tab then UIKit.GREEN else UIKit.BUTTON_COLOR
 	end

@@ -44,7 +44,7 @@ Niveaux sauvegardés dans `data.Skills[skillId]` (DataService). Achat validé pa
 | ⚡ Roll Speed | Roll Speed | 10 | — | cooldown serveur 2 s × 0.92^niv (min 0.5 s) |
 | ⚡ Roll Speed | Quick Reveal | 3 | Roll Speed 3 | animation de roll −20 %/niv (visuel) |
 | 🏝️ Island | Core HP | 10 | — | +20 %/niv de vie du Core (WaveService) |
-| 🏝️ Island | Build Capacity | 10 | Core HP 1 | 60 objets posés + 10/niv (IslandService) |
+| 🏝️ Island | Build Capacity | 20 | — | 40 objets posés + 10/niv, max 240 (IslandService) |
 | 🏝️ Island | Build Height | 2 | Build Capacity 3 | 3 étages + 1/niv (Grid:GetPlacement) |
 | 🏝️ Island | Island Size | 3 | Core HP 5 | 🚧 BIENTÔT (demande d'agrandir le Damier) |
 | ⚔️ (hors arbre) | Sword | 20 | — | dégâts de l'épée 15 × 1.25^niv (bouton SWORD) |

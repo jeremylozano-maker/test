@@ -27,7 +27,7 @@ SkillTreeConfig.BranchOrder = { "Roll", "Luck", "RollSpeed", "Island" }
 SkillTreeConfig.Base = {
 	RollCooldown = 2, -- secondes entre deux rolls
 	MinRollCooldown = 0.5,
-	BuildCapacity = 60, -- objets posés au maximum sur l'île
+	BuildCapacity = 40, -- objets posés au maximum sur l'île (sans amélioration)
 	BuildHeight = 3, -- étages
 	PityRolls = 60, -- Roll Mastery : un Rare+ garanti tous les N rolls
 	SwordDamage = 15,
@@ -153,14 +153,13 @@ SkillTreeConfig.Skills = {
 		Branch = "Island",
 		Name = "Build Capacity",
 		Icon = "📦",
-		Description = "Augmente le nombre maximum d'objets posés sur l'île.",
-		MaxLevel = 10,
-		Cost = { Base = 100, Growth = 1.5 },
-		Bonus = { PerLevel = 10 }, -- +10 objets par niveau
+		Description = "Augmente le nombre maximum d'objets posés sur l'île (40 au départ).",
+		MaxLevel = 20,
+		Cost = { Base = 100, Growth = 1.35 },
+		Bonus = { PerLevel = 10 }, -- +10 objets par niveau : 40 -> 240 au max
 		BonusFormat = "Flat",
 		BonusSuffix = " objets",
-		Prerequisites = { { Skill = "CoreHP", Level = 1 } },
-		Position = { -1.1, 2.2 },
+		Position = { -1.1, 2.2 }, -- racine de branche : achetable dès le début
 	},
 	BuildHeight = {
 		Branch = "Island",
