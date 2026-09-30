@@ -33,6 +33,7 @@ local plocSound = create("Sound", { SoundId = PLOC_SOUND_ID, Volume = 0.6, Paren
 local state = {
 	Mode = nil, -- "Build" | "Delete" | nil
 	SelectedId = nil,
+	Tab = "Block", -- onglet ouvert dans la fenêtre BUILD
 	Inventory = {},
 	Ghost = nil,
 	Target = nil, -- Build : { X, Z, Valid } / Delete : { Model }
@@ -156,22 +157,40 @@ local buildPanel = create("Frame", {
 	create("UISizeConstraint", { MinSize = Vector2.new(230, 220), MaxSize = Vector2.new(400, 560) }),
 })
 
-create("TextLabel", {
+-- Onglets en haut de la fenêtre : un par catégorie
+local TABS = {
+	{ Category = "Block", Text = "🧱 BLOCKS" },
+	{ Category = "Weapon", Text = "⚔️ WEAPONS" },
+	{ Category = "Trap", Text = "🔺 TRAPS" },
+}
+
+local tabBar = create("Frame", {
 	Parent = buildPanel,
-	Position = UDim2.new(0, 14, 0, 8),
-	Size = UDim2.new(1, -28, 0, 38),
+	Position = UDim2.new(0, 10, 0, 10),
+	Size = UDim2.new(1, -20, 0, 40),
 	BackgroundTransparency = 1,
-	Text = "🔨 BUILD",
-	TextColor3 = UIKit.WHITE,
-	Font = UIKit.TITLE_FONT,
-	TextScaled = true,
-	TextXAlignment = Enum.TextXAlignment.Left,
+}, {
+	create("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		Padding = UDim.new(0, 6),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+	}),
 })
+
+local tabButtons = {}
+for order, tab in TABS do
+	tabButtons[tab.Category] = makeButton({
+		Parent = tabBar,
+		LayoutOrder = order,
+		Size = UDim2.new(1 / #TABS, -4, 1, 0),
+		Text = tab.Text,
+	})
+end
 
 local buildList = create("ScrollingFrame", {
 	Parent = buildPanel,
-	Position = UDim2.new(0, 10, 0, 56),
-	Size = UDim2.new(1, -20, 1, -66),
+	Position = UDim2.new(0, 10, 0, 58),
+	Size = UDim2.new(1, -20, 1, -68),
 	BackgroundTransparency = 1,
 	BorderSizePixel = 0,
 	ScrollBarThickness = 6,
@@ -184,47 +203,32 @@ local buildList = create("ScrollingFrame", {
 local selectItem -- défini plus bas
 
 local function renderBuildPanel()
+	for category, button in tabButtons do
+		button.BackgroundColor3 = if category == state.Tab then UIKit.GREEN else UIKit.BUTTON_COLOR
+	end
 	for _, child in buildList:GetChildren() do
 		if child:IsA("GuiObject") then
 			child:Destroy()
 		end
 	end
 	local order = 0
-	for _, category in Items.Categories do
-		local headerAdded = false
-		for _, item in Items.ByCategory[category] do
-			local count = state.Inventory[item.Id] or 0
-			if count > 0 then
-				if not headerAdded then
-					headerAdded = true
-					order += 1
-					create("TextLabel", {
-						Parent = buildList,
-						LayoutOrder = order,
-						Size = UDim2.new(1, -8, 0, 28),
-						BackgroundTransparency = 1,
-						Text = Items.CategoryInfo[category].Label,
-						TextColor3 = UIKit.HEADER_COLOR,
-						Font = UIKit.TITLE_FONT,
-						TextScaled = true,
-						TextXAlignment = Enum.TextXAlignment.Left,
-					})
-				end
-				order += 1
-				local isSelected = item.Id == state.SelectedId
-				local button = makeButton({
-					Parent = buildList,
-					LayoutOrder = order,
-					Size = UDim2.new(1, -8, 0, 40),
-					Text = string.format("%s %s ×%d", item.Icon, item.Name, count),
-					TextColor3 = Rarities.Info[item.Rarity].Color,
-					TextXAlignment = Enum.TextXAlignment.Left,
-					BackgroundColor3 = if isSelected then Color3.fromRGB(40, 90, 55) else UIKit.BUTTON_COLOR,
-				})
-				button.Activated:Connect(function()
-					selectItem(if isSelected then nil else item.Id)
-				end)
-			end
+	for _, item in Items.ByCategory[state.Tab] do
+		local count = state.Inventory[item.Id] or 0
+		if count > 0 then
+			order += 1
+			local isSelected = item.Id == state.SelectedId
+			local button = makeButton({
+				Parent = buildList,
+				LayoutOrder = order,
+				Size = UDim2.new(1, -8, 0, 40),
+				Text = string.format("%s %s ×%d", item.Icon, item.Name, count),
+				TextColor3 = Rarities.Info[item.Rarity].Color,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				BackgroundColor3 = if isSelected then Color3.fromRGB(40, 90, 55) else UIKit.BUTTON_COLOR,
+			})
+			button.Activated:Connect(function()
+				selectItem(if isSelected then nil else item.Id)
+			end)
 		end
 	end
 	if order == 0 then
@@ -232,12 +236,19 @@ local function renderBuildPanel()
 			Parent = buildList,
 			Size = UDim2.new(1, -8, 0, 60),
 			BackgroundTransparency = 1,
-			Text = "Inventaire vide.\nFais des 🎲 ROLL !",
+			Text = "Rien dans cette catégorie.\nFais des 🎲 ROLL !",
 			TextColor3 = UIKit.GREY,
 			Font = UIKit.TEXT_FONT,
 			TextScaled = true,
 		})
 	end
+end
+
+for category, button in tabButtons do
+	button.Activated:Connect(function()
+		state.Tab = category
+		renderBuildPanel()
+	end)
 end
 
 ---------------------------------------------------------------- fantôme et cibles
