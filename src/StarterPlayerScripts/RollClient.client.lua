@@ -87,15 +87,31 @@ local _, cooldownFill = UIKit.makeBar({
 	Size = UDim2.new(1, 0, 0, 8),
 }, UIKit.WHITE)
 
+-- AUTO : lance les rolls à la suite (verrouillé tant que "Auto Roll" n'est pas acheté dans le Skill Tree)
 local autoButton = makeButton({
 	Parent = gui,
 	AnchorPoint = Vector2.new(0, 1),
 	Position = UDim2.new(0.5, 130, 1, -22),
-	Size = UDim2.new(0, 120, 0, 54),
-	Text = "AUTO: OFF",
-	Visible = false,
+	Size = UDim2.new(0, 130, 0, 54),
+	Text = "🔒 AUTO",
 	Studs = 2,
 })
+local autoHintUntil = 0 -- affiche un conseil quelques secondes après un clic sur AUTO verrouillé
+
+local function isAutoUnlocked()
+	return state.Snapshot ~= nil and SkillTree.HasAutoRoll(state.Snapshot.Skills)
+end
+
+local function renderAutoButton()
+	if not isAutoUnlocked() then
+		state.AutoRoll = false
+		autoButton.Text = if os.clock() < autoHintUntil then "🌳 Skill Tree !" else "🔒 AUTO"
+		autoButton.BackgroundColor3 = UIKit.darken(UIKit.BUTTON_COLOR, 0.3)
+	else
+		autoButton.Text = if state.AutoRoll then "🔁 AUTO: ON" else "🔁 AUTO: OFF"
+		autoButton.BackgroundColor3 = if state.AutoRoll then UIKit.GREEN else UIKit.BUTTON_COLOR
+	end
+end
 
 -- Boutons à droite
 local inventoryButton = makeButton({
@@ -207,10 +223,7 @@ end
 local function applySnapshot(snapshot)
 	state.Snapshot = snapshot
 	coinsLabel.Text = "🪙 " .. snapshot.Coins
-	autoButton.Visible = SkillTree.HasAutoRoll(snapshot.Skills)
-	if not autoButton.Visible then
-		state.AutoRoll = false
-	end
+	renderAutoButton()
 	if inventoryPanel.Visible then
 		renderInventory()
 	end
@@ -237,32 +250,27 @@ end)
 
 ---------------------------------------------------------------- révélation du roll
 
-local REVEAL_POSITION = UDim2.fromScale(0.5, 0.38)
+-- En haut au milieu, juste sous les Coins, sans fond (seulement le texte)
+local REVEAL_POSITION = UDim2.new(0.5, 0, 0, 66)
 
 local reveal = create("Frame", {
 	Parent = gui,
 	Visible = false,
-	AnchorPoint = Vector2.new(0.5, 0.5),
+	AnchorPoint = Vector2.new(0.5, 0),
 	Position = REVEAL_POSITION,
-	Size = UDim2.fromScale(0.5, 0.24),
-	BackgroundColor3 = UIKit.PANEL_COLOR,
-	BorderSizePixel = 0,
+	Size = UDim2.new(0.5, 0, 0, 104),
+	BackgroundTransparency = 1,
 }, {
-	corner(20),
-	UIKit.shine(Color3.fromRGB(160, 160, 180)),
-	create("UISizeConstraint", { MinSize = Vector2.new(280, 130), MaxSize = Vector2.new(500, 190) }),
+	create("UISizeConstraint", { MinSize = Vector2.new(300, 104), MaxSize = Vector2.new(520, 104) }),
 })
-UIKit.addStuds(reveal, 6)
-local revealStroke = stroke(6, UIKit.WHITE)
-revealStroke.Parent = reveal
 local revealScale = create("UIScale", { Parent = reveal, Scale = 1 })
 
 -- Pastille de rareté en haut
 local rarityChip = create("Frame", {
 	Parent = reveal,
 	AnchorPoint = Vector2.new(0.5, 0),
-	Position = UDim2.new(0.5, 0, 0, 12),
-	Size = UDim2.new(0.55, 0, 0.26, 0),
+	Position = UDim2.new(0.5, 0, 0, 0),
+	Size = UDim2.new(0.45, 0, 0, 32),
 	BackgroundColor3 = UIKit.BUTTON_COLOR,
 	BorderSizePixel = 0,
 }, { corner(10), stroke(3), UIKit.shine() })
@@ -276,8 +284,8 @@ local rarityLabel = UIKit.label({
 
 local nameLabel = UIKit.label({
 	Parent = reveal,
-	Position = UDim2.fromScale(0.05, 0.42),
-	Size = UDim2.fromScale(0.9, 0.46),
+	Position = UDim2.new(0.02, 0, 0, 38),
+	Size = UDim2.new(0.96, 0, 0, 62),
 	Text = "",
 	TextStrokeTransparency = 0,
 })
@@ -285,7 +293,7 @@ local nameLabel = UIKit.label({
 local newBadge = create("TextLabel", {
 	Parent = reveal,
 	AnchorPoint = Vector2.new(1, 0),
-	Position = UDim2.new(1, 14, 0, -18),
+	Position = UDim2.new(1, 0, 0, 0),
 	Size = UDim2.new(0, 86, 0, 34),
 	Rotation = 12,
 	BackgroundColor3 = UIKit.RED,
@@ -302,7 +310,7 @@ local newBadge = create("TextLabel", {
 local bonusChip = create("Frame", {
 	Parent = reveal,
 	AnchorPoint = Vector2.new(0.5, 0),
-	Position = UDim2.new(0.5, 0, 1, 10),
+	Position = UDim2.new(0.5, 0, 1, 4),
 	Size = UDim2.new(0.8, 0, 0, 34),
 	BackgroundColor3 = UIKit.ORANGE,
 	BorderSizePixel = 0,
@@ -333,7 +341,6 @@ end
 
 local function setRevealColor(color)
 	nameLabel.TextColor3 = color
-	revealStroke.Color = color
 	rarityChip.BackgroundColor3 = UIKit.darken(color, 0.25)
 end
 
@@ -366,7 +373,6 @@ local function playReveal(result)
 		local fake = Items.List[math.random(#Items.List)]
 		nameLabel.Text = fake.Icon .. " " .. fake.Name
 		nameLabel.TextColor3 = Rarities.Info[fake.Rarity].Color
-		revealStroke.Color = Rarities.Info[fake.Rarity].Color
 		local progress = tick / info.RevealTicks
 		task.wait((0.03 + (info.RevealMaxDelay - 0.03) * progress * progress) * speed)
 	end
@@ -451,9 +457,15 @@ rollButton.Activated:Connect(function()
 end)
 
 autoButton.Activated:Connect(function()
+	if not isAutoUnlocked() then
+		-- verrouillé : on indique où le débloquer
+		autoHintUntil = os.clock() + 2
+		renderAutoButton()
+		task.delay(2, renderAutoButton)
+		return
+	end
 	state.AutoRoll = not state.AutoRoll
-	autoButton.Text = if state.AutoRoll then "AUTO: ON" else "AUTO: OFF"
-	autoButton.BackgroundColor3 = if state.AutoRoll then UIKit.GREEN else UIKit.BUTTON_COLOR
+	renderAutoButton()
 end)
 
 task.spawn(function()

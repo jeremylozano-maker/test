@@ -22,12 +22,12 @@ local gui = create("ScreenGui", {
 	Parent = player:WaitForChild("PlayerGui"),
 })
 
----------------------------------------------------------------- vague + vie du Core (en haut, sous les Coins)
+---------------------------------------------------------------- vague, zombies restants, vie du Core (en bas au milieu, au-dessus du ROLL)
 
 local wavePanel = create("Frame", {
 	Parent = gui,
-	AnchorPoint = Vector2.new(0.5, 0),
-	Position = UDim2.new(0.5, 0, 0, 72),
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 1, -114),
 	Size = UDim2.new(0, 310, 0, 64),
 	BackgroundColor3 = UIKit.PANEL_COLOR,
 	BorderSizePixel = 0,
