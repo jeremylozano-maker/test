@@ -29,6 +29,7 @@ local dataSync = makeRemote("RemoteEvent", "DataSync")
 local placeRemote = makeRemote("RemoteFunction", "PlaceItem")
 local deleteRemote = makeRemote("RemoteFunction", "DeleteItem")
 local startWaveRemote = makeRemote("RemoteFunction", "StartWave")
+local stopWavesRemote = makeRemote("RemoteFunction", "StopWaves")
 local speedRemote = makeRemote("RemoteFunction", "SetWaveSpeed")
 local deathRemote = makeRemote("RemoteFunction", "ResolveDeath")
 remotes.Parent = ReplicatedStorage
@@ -69,6 +70,10 @@ end
 
 startWaveRemote.OnServerInvoke = function(player)
 	return WaveService.StartWave(player)
+end
+
+stopWavesRemote.OnServerInvoke = function(player)
+	return WaveService.Stop(player)
 end
 
 speedRemote.OnServerInvoke = function(player, value)

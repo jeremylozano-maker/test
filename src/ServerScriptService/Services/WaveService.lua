@@ -1,4 +1,4 @@
--- WaveService : lancement des vagues, vie du Core, récompenses, mort / revive / checkpoint
+-- WaveService : vagues enchaînées (jusqu'à la mort du Core ou STOP), vie du Core, récompenses, mort / revive / checkpoint
 -- L'état est publié dans ReplicatedStorage.WaveInfo (attributs) pour l'interface des joueurs.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -17,10 +17,11 @@ local waveInfo
 local rng = Random.new()
 
 local owner = nil
-local phase = "Build" -- "Build" | "Wave" | "Dead"
+local phase = "Build" -- "Build" | "Wave" (vagues + pauses entre elles) | "Dead"
 local currentWave = 1
 local spawnQueue = {}
 local spawnTimer = 0
+local intermission = 0 -- pause restante avant la prochaine vague
 local coreHP, coreMaxHP = 0, 0
 local speed = 1
 local run = { Kills = 0, Coins = 0, Waves = 0 } -- depuis la dernière mort
@@ -44,6 +45,19 @@ local function resetRun()
 	run = { Kills = 0, Coins = 0, Waves = 0 }
 end
 
+local function setIntermission(seconds)
+	intermission = seconds
+	setInfo("NextWaveIn", math.max(0, math.ceil(seconds)))
+end
+
+-- Vie du Core remise au max (au START et au Revive ; elle ne remonte pas entre deux vagues)
+local function fillCore()
+	local data = DataService.Get(owner)
+	coreMaxHP = math.floor(Waves.CoreBaseHP * SkillTree.GetCoreHPMultiplier(data.Skills))
+	coreHP = coreMaxHP
+	refreshCore()
+end
+
 -- Point d'apparition au hasard dans l'océan, tout autour de l'île
 local function spawnPosition()
 	local grid = IslandService.GetGrid()
@@ -57,6 +71,7 @@ local function loadOwner(player)
 	owner = player
 	EnemyService.Clear()
 	spawnQueue = {}
+	setIntermission(0)
 	resetRun()
 	speed = 1
 	setInfo("Speed", 1)
@@ -67,12 +82,9 @@ local function loadOwner(player)
 end
 
 local function beginWave()
-	local data = DataService.Get(owner)
 	spawnQueue = Waves.Build(currentWave)
 	spawnTimer = 0
-	coreMaxHP = math.floor(Waves.CoreBaseHP * SkillTree.GetCoreHPMultiplier(data.Skills))
-	coreHP = coreMaxHP
-	refreshCore()
+	setIntermission(0)
 	setInfo("EnemiesLeft", #spawnQueue)
 	setPhase("Wave")
 end
@@ -93,12 +105,14 @@ local function onWaveCleared()
 	currentWave += 1
 	setInfo("Wave", currentWave)
 	IslandService.RestoreLayout()
-	setPhase("Build")
+	-- la vague suivante s'enchaîne après une courte pause
+	setIntermission(Waves.Intermission)
 end
 
 local function onDeath()
 	EnemyService.Clear()
 	spawnQueue = {}
+	setIntermission(0)
 	setInfo("RunKills", run.Kills)
 	setInfo("RunCoins", run.Coins)
 	setInfo("RunWaves", run.Waves)
@@ -110,7 +124,22 @@ function WaveService.StartWave(player)
 	if player ~= owner or phase ~= "Build" or not DataService.Get(player) then
 		return false
 	end
+	resetRun()
+	fillCore()
 	beginWave()
+	return true
+end
+
+-- STOP : arrête l'enchaînement tout de suite ; la vague en cours n'est pas gagnée et sera rejouée
+function WaveService.Stop(player)
+	if player ~= owner or phase ~= "Wave" then
+		return false
+	end
+	EnemyService.Clear()
+	spawnQueue = {}
+	setIntermission(0)
+	IslandService.RestoreLayout()
+	setPhase("Build")
 	return true
 end
 
@@ -137,6 +166,7 @@ function WaveService.Revive(player)
 		return false
 	end
 	IslandService.RestoreLayout()
+	fillCore()
 	beginWave()
 	return true
 end
@@ -155,6 +185,14 @@ local function step(dt)
 		return
 	end
 	dt *= speed
+
+	if intermission > 0 then
+		setIntermission(intermission - dt)
+		if intermission <= 0 then
+			beginWave()
+		end
+		return
+	end
 
 	spawnTimer -= dt
 	if spawnTimer <= 0 and #spawnQueue > 0 then
@@ -184,6 +222,7 @@ function WaveService.Init()
 	waveInfo:SetAttribute("CoreHP", 0)
 	waveInfo:SetAttribute("CoreMaxHP", 0)
 	waveInfo:SetAttribute("EnemiesLeft", 0)
+	waveInfo:SetAttribute("NextWaveIn", 0)
 	waveInfo.Parent = ReplicatedStorage
 
 	EnemyService.OnCoreHit = function(damage)

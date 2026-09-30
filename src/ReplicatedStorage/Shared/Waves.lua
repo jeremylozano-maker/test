@@ -5,6 +5,7 @@ Waves.CoreBaseHP = 500
 Waves.SpawnInterval = 0.8 -- secondes entre deux apparitions
 Waves.SpawnDistance = 35 -- studs entre le bord de l'île et l'apparition des zombies
 Waves.CheckpointEvery = 10
+Waves.Intermission = 4 -- secondes de pause entre deux vagues enchaînées
 
 -- Coins gagnés en survivant à la vague (x3 sur les vagues de checkpoint)
 function Waves.GetReward(wave)

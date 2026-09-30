@@ -1,4 +1,4 @@
--- WaveClient : bouton START, vitesse, vie du Core, vague en cours, écran de mort
+-- WaveClient : boutons START / STOP, vitesse, vie du Core, vague en cours, écran de mort
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -76,6 +76,16 @@ local startButton = makeButton({
 	Size = UDim2.new(0, 145, 0, 56),
 	BackgroundColor3 = Color3.fromRGB(230, 120, 40),
 	Text = "▶️ START",
+})
+
+local stopButton = makeButton({
+	Parent = gui,
+	AnchorPoint = Vector2.new(1, 0.5),
+	Position = UDim2.new(1, -12, 0.5, 102),
+	Size = UDim2.new(0, 145, 0, 56),
+	BackgroundColor3 = UIKit.RED,
+	Text = "⏹️ STOP",
+	Visible = false,
 })
 
 local speedButton = makeButton({
@@ -164,7 +174,10 @@ local function update()
 	local coreMaxHP = waveInfo:GetAttribute("CoreMaxHP") or 0
 	local isOwner = gridInfo:GetAttribute("OwnerUserId") == player.UserId
 
-	if phase == "Wave" then
+	local nextWaveIn = waveInfo:GetAttribute("NextWaveIn") or 0
+	if phase == "Wave" and nextWaveIn > 0 then
+		waveLabel.Text = string.format("⏳ WAVE %d dans %d...", wave, nextWaveIn)
+	elseif phase == "Wave" then
 		waveLabel.Text = string.format("🌊 WAVE %d   🧟 %d", wave, waveInfo:GetAttribute("EnemiesLeft") or 0)
 	else
 		waveLabel.Text = string.format("🌊 WAVE %d", wave)
@@ -176,6 +189,7 @@ local function update()
 	coreLabel.Text = string.format("❤️ %d / %d", coreHP, coreMaxHP)
 
 	startButton.Visible = phase == "Build" and isOwner
+	stopButton.Visible = phase == "Wave" and isOwner
 	speedButton.Visible = phase == "Wave" and isOwner
 	speedButton.Text = "⏩ x" .. (waveInfo:GetAttribute("Speed") or 1)
 
@@ -214,6 +228,10 @@ gridInfo:GetAttributeChangedSignal("OwnerUserId"):Connect(update)
 
 startButton.Activated:Connect(function()
 	Remotes.StartWave:InvokeServer()
+end)
+
+stopButton.Activated:Connect(function()
+	Remotes.StopWaves:InvokeServer()
 end)
 
 speedButton.Activated:Connect(function()
