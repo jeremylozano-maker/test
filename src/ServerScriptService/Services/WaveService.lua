@@ -96,7 +96,8 @@ local function onWaveCleared()
 	local data = DataService.Get(owner)
 	if data then
 		data.Stats.BestWave = math.max(data.Stats.BestWave, currentWave)
-		data.Wave = currentWave + 1
+		-- la sauvegarde ne retient que le dernier checkpoint (1, 11, 21, 31...)
+		data.Wave = Waves.GetCheckpoint(currentWave + 1)
 		DataService.AddCoins(owner, reward)
 	end
 	setInfo("LastClearedWave", currentWave)
@@ -136,11 +137,17 @@ function WaveService.StartWave(player)
 	return true
 end
 
--- STOP : arrête l'enchaînement tout de suite ; la vague en cours n'est pas gagnée et sera rejouée
+-- STOP : arrête l'enchaînement tout de suite ; on reprendra au dernier checkpoint
 function WaveService.Stop(player)
 	if player ~= owner or phase ~= "Wave" then
 		return false
 	end
+	currentWave = Waves.GetCheckpoint(currentWave)
+	local data = DataService.Get(player)
+	if data then
+		data.Wave = currentWave
+	end
+	setInfo("Wave", currentWave)
 	EnemyService.Clear()
 	spawnQueue = {}
 	setIntermission(0)

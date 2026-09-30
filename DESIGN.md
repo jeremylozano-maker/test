@@ -42,7 +42,8 @@ Dans une rareté, poids : Block 6, Trap 3, Weapon 1 (les blocs sortent plus souv
 - Ils apparaissent dans l'océan autour de l'île, vont vers le bas de la colonne la plus proche (blocs/armes), sinon le Core.
 - Core : 500 PV × bonus Core HP.
 - Coins par vague = 10 + 5 × vague, ×3 toutes les 10 vagues.
-- Mort : Accepter = reprise au checkpoint (1, 11, 21…), coins gardés, base remise. Revive = même vague, tout au max (Robux, gratuit dans Studio pour tester).
+- Sauvegarde de la progression : uniquement le dernier checkpoint (1, 11, 21…). Mort, STOP ou déconnexion à la vague 34 → reprise à la 31.
+- Mort : Accepter = reprise au checkpoint, coins gardés, base remise. Revive = même vague, tout au max (Robux, gratuit dans Studio pour tester).
 
 ## Phases
 1. Configs + sauvegarde + Roll + Inventaire + Index ✅
