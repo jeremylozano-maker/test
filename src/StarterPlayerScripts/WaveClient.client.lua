@@ -111,7 +111,7 @@ local toast = create("TextLabel", {
 	Visible = false,
 }, { corner(14), stroke(3, UIKit.GREEN) })
 
----------------------------------------------------------------- écran de mort
+---------------------------------------------------------------- résumé de session (mort ou STOP)
 
 local deathPanel = create("Frame", {
 	Parent = gui,
@@ -141,7 +141,7 @@ local function deathText(y, height, text, color)
 	})
 end
 
-deathText(0.04, 0.14, "💀 TON CORE EST DÉTRUIT", UIKit.RED)
+local summaryTitle = deathText(0.04, 0.14, "", UIKit.RED)
 local killsLabel = deathText(0.24, 0.1, "", UIKit.WHITE)
 local coinsLabel = deathText(0.35, 0.1, "", UIKit.HEADER_COLOR)
 local wavesLabel = deathText(0.46, 0.1, "", UIKit.WHITE)
@@ -156,6 +156,16 @@ local reviveButton = makeButton({
 	ZIndex = 6,
 })
 
+local okButton = makeButton({
+	Parent = deathPanel,
+	AnchorPoint = Vector2.new(0.5, 0),
+	Position = UDim2.new(0.5, 0, 0.72, 0),
+	Size = UDim2.new(0.5, 0, 0.2, 0),
+	BackgroundColor3 = UIKit.GREEN,
+	Text = "✔ OK",
+	ZIndex = 6,
+})
+
 local acceptButton = makeButton({
 	Parent = deathPanel,
 	Position = UDim2.new(0.52, 0, 0.72, 0),
@@ -166,6 +176,8 @@ local acceptButton = makeButton({
 })
 
 ---------------------------------------------------------------- mise à jour
+
+local showStopSummary = false -- résumé après STOP, fermé avec OK
 
 local function update()
 	local phase = waveInfo:GetAttribute("Phase")
@@ -193,12 +205,23 @@ local function update()
 	speedButton.Visible = phase == "Wave" and isOwner
 	speedButton.Text = "⏩ x" .. (waveInfo:GetAttribute("Speed") or 1)
 
-	deathPanel.Visible = phase == "Dead" and isOwner
-	if phase == "Dead" then
+	local isDead = phase == "Dead"
+	if phase == "Wave" then
+		showStopSummary = false
+	end
+	deathPanel.Visible = isOwner and (isDead or showStopSummary)
+	if deathPanel.Visible then
+		summaryTitle.Text = if isDead then "💀 TON CORE EST DÉTRUIT" else "⏹️ SESSION TERMINÉE"
+		summaryTitle.TextColor3 = if isDead then UIKit.RED else UIKit.HEADER_COLOR
 		killsLabel.Text = "🧟 Zombies tués : " .. (waveInfo:GetAttribute("RunKills") or 0)
 		coinsLabel.Text = "🪙 Coins gagnés : " .. (waveInfo:GetAttribute("RunCoins") or 0)
 		wavesLabel.Text = "🌊 Vagues survécues : " .. (waveInfo:GetAttribute("RunWaves") or 0)
-		checkpointLabel.Text = "Tu reprendras à la vague " .. (waveInfo:GetAttribute("CheckpointWave") or 1)
+		checkpointLabel.Text = if isDead
+			then "Tu reprendras à la vague " .. (waveInfo:GetAttribute("CheckpointWave") or 1)
+			else "Prochaine vague : " .. wave
+		reviveButton.Visible = isDead
+		acceptButton.Visible = isDead
+		okButton.Visible = not isDead
 	end
 end
 
@@ -220,6 +243,8 @@ end
 waveInfo.AttributeChanged:Connect(function(name)
 	if name == "ClearedCount" then
 		showToast()
+	elseif name == "StopCount" then
+		showStopSummary = true
 	end
 	update()
 end)
@@ -237,6 +262,11 @@ end)
 speedButton.Activated:Connect(function()
 	local nextSpeed = if waveInfo:GetAttribute("Speed") == 2 then 1 else 2
 	Remotes.SetWaveSpeed:InvokeServer(nextSpeed)
+end)
+
+okButton.Activated:Connect(function()
+	showStopSummary = false
+	update()
 end)
 
 acceptButton.Activated:Connect(function()

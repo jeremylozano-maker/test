@@ -109,13 +109,18 @@ local function onWaveCleared()
 	setIntermission(Waves.Intermission)
 end
 
+-- Résumé de la session (depuis le dernier START) affiché au joueur
+local function publishRun()
+	setInfo("RunKills", run.Kills)
+	setInfo("RunCoins", run.Coins)
+	setInfo("RunWaves", run.Waves)
+end
+
 local function onDeath()
 	EnemyService.Clear()
 	spawnQueue = {}
 	setIntermission(0)
-	setInfo("RunKills", run.Kills)
-	setInfo("RunCoins", run.Coins)
-	setInfo("RunWaves", run.Waves)
+	publishRun()
 	setInfo("CheckpointWave", Waves.GetCheckpoint(currentWave))
 	setPhase("Dead")
 end
@@ -138,6 +143,8 @@ function WaveService.Stop(player)
 	EnemyService.Clear()
 	spawnQueue = {}
 	setIntermission(0)
+	publishRun()
+	setInfo("StopCount", (waveInfo:GetAttribute("StopCount") or 0) + 1)
 	IslandService.RestoreLayout()
 	setPhase("Build")
 	return true
