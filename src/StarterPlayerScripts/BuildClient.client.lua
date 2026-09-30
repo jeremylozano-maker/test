@@ -24,6 +24,7 @@ local VALID_COLOR = Color3.fromRGB(80, 255, 120)
 local INVALID_COLOR = Color3.fromRGB(255, 60, 60)
 
 local gridInfo = ReplicatedStorage:WaitForChild("GridInfo")
+local waveInfo = ReplicatedStorage:WaitForChild("WaveInfo")
 local grid = Grid.FromData(HttpService:JSONDecode(gridInfo:GetAttribute("Data")))
 local placedFolder = workspace:WaitForChild("PlacedObjects")
 
@@ -59,7 +60,7 @@ local deleteHighlight = create("Highlight", {
 
 local RANGE_COLOR = Color3.fromRGB(80, 255, 120)
 local MIN_RANGE_COLOR = Color3.fromRGB(255, 80, 80)
-local cellSpacing = if #grid.Xs > 1 then grid.Xs[2] - grid.Xs[1] else grid.CellSize
+local cellSpacing = grid:GetSpacing()
 
 -- Disque plat au sol (cylindre couché)
 local function makeDisc(color)
@@ -410,7 +411,7 @@ local function setMode(mode)
 	if state.Mode == mode then
 		mode = nil
 	end
-	if mode and gridInfo:GetAttribute("OwnerUserId") ~= player.UserId then
+	if mode and (gridInfo:GetAttribute("OwnerUserId") ~= player.UserId or waveInfo:GetAttribute("Phase") ~= "Build") then
 		return
 	end
 	state.Mode = mode
@@ -427,6 +428,13 @@ local function setMode(mode)
 		closeOtherPanels()
 	end
 end
+
+-- Pas de construction pendant une vague
+waveInfo:GetAttributeChangedSignal("Phase"):Connect(function()
+	if waveInfo:GetAttribute("Phase") ~= "Build" then
+		setMode(nil)
+	end
+end)
 
 buildButton.Activated:Connect(function()
 	setMode("Build")

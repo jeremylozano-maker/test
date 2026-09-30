@@ -36,12 +36,17 @@ Dans une rareté, poids : Block 6, Trap 3, Weapon 1 (les blocs sortent plus souv
 | Roll Speed | 10 | 80 × 1.5^N | cooldown 2 s × 0.92^N (min 0.5 s) |
 | Core HP | 10 | 120 × 1.55^N | +20 % vie du Core / niveau |
 
-## Économie des vagues (prévu, phase 4)
-Coins par vague = 10 + 5 × numéro de vague, ×3 sur les vagues de boss (toutes les 10).
+## Vagues
+- Bouton START : le joueur lance la vague. Pas de construction pendant une vague. Vitesse x1 / x2 (x3 Robux plus tard).
+- Zombies : 4 + 2 × vague, PV × 1.12^(vague-1). Fast dès la vague 3, Tank dès la 5, Tanks en plus toutes les 10.
+- Ils apparaissent dans l'océan autour de l'île, vont vers le bas de la colonne la plus proche (blocs/armes), sinon le Core.
+- Core : 500 PV × bonus Core HP.
+- Coins par vague = 10 + 5 × vague, ×3 toutes les 10 vagues.
+- Mort : Accepter = reprise au checkpoint (1, 11, 21…), coins gardés, base remise. Revive = même vague, tout au max (Robux, gratuit dans Studio pour tester).
 
 ## Phases
 1. Configs + sauvegarde + Roll + Inventaire + Index ✅
 2. Build / Delete sur le Damier (ghost, snap, ploc, empilement) ✅
-3. Core + zombies + vagues + défenses + gravité + respawn fin de vague
+3. Core + zombies + vagues + défenses + gravité + respawn fin de vague + écran de mort ✅
 4. Coins + écran de mort + Skill Tree UI
 5. Boss, ennemis, épée, effets, mobile, événements

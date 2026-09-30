@@ -19,6 +19,7 @@ local function defaultData()
 	return {
 		Version = 1,
 		Coins = 0,
+		Wave = 1, -- prochaine vague à jouer
 		Inventory = {}, -- [itemId] = quantité non placée
 		Index = {}, -- [itemId] = true
 		Skills = { AutoRoll = 0, Luck = 0, RollSpeed = 0, CoreHP = 0 },

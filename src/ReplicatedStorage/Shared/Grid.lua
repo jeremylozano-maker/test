@@ -89,11 +89,15 @@ function Grid:Serialize()
 	}
 end
 
+-- Distance entre les centres de deux cases voisines (les portées sont en cases)
+function Grid:GetSpacing()
+	return if #self.Xs > 1 then self.Xs[2] - self.Xs[1] else self.CellSize
+end
+
 function Grid:WorldToCell(position)
-	local spacingX = if #self.Xs > 1 then self.Xs[2] - self.Xs[1] else self.CellSize
-	local spacingZ = if #self.Zs > 1 then self.Zs[2] - self.Zs[1] else self.CellSize
-	local x = nearestIndex(self.Xs, position.X, spacingX / 2)
-	local z = nearestIndex(self.Zs, position.Z, spacingZ / 2)
+	local spacing = self:GetSpacing()
+	local x = nearestIndex(self.Xs, position.X, spacing / 2)
+	local z = nearestIndex(self.Zs, position.Z, spacing / 2)
 	if x and z then
 		return x, z
 	end
