@@ -9,7 +9,7 @@
 - Core : case (7,5) au centre. On ne construit pas sur sa case, mais on peut empiler au-dessus de lui.
   Il occupe 1 ou 2 étages selon sa hauteur (forçable avec l'attribut `GridLevels` sur workspace.Core).
 - La hauteur de placement est automatique : l'objet va sur le haut de la colonne visée.
-- Objets détruits pendant une vague : ils réapparaissent à la fin de la vague.
+- Objets détruits pendant les vagues : ils restent détruits d'une vague à l'autre, la base est réparée seulement au STOP ou à la mort.
 - Zombies : vont toujours vers l'objet (ciblable) le plus proche, sinon le Core.
 - Mort : fenêtre de stats (zombies tués, coins gagnés, vagues survécues).
   - Revive (Robux) : Core et armes full vie, reprise à la vague de la mort.

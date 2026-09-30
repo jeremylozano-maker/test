@@ -104,7 +104,7 @@ local function onWaveCleared()
 	setInfo("ClearedCount", (waveInfo:GetAttribute("ClearedCount") or 0) + 1)
 	currentWave += 1
 	setInfo("Wave", currentWave)
-	IslandService.RestoreLayout()
+	-- la base n'est PAS réparée : les dégâts restent jusqu'au STOP ou à la mort
 	-- la vague suivante s'enchaîne après une courte pause
 	setIntermission(Waves.Intermission)
 end
@@ -120,6 +120,7 @@ local function onDeath()
 	EnemyService.Clear()
 	spawnQueue = {}
 	setIntermission(0)
+	IslandService.RestoreLayout()
 	publishRun()
 	setInfo("CheckpointWave", Waves.GetCheckpoint(currentWave))
 	setPhase("Dead")
