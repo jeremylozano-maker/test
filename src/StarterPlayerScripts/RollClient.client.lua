@@ -443,7 +443,7 @@ local function playReveal(result)
 	-- Quick Reveal : animation plus courte
 	local speed = SkillTree.GetRevealDurationMultiplier(state.Snapshot and state.Snapshot.Skills or {})
 
-	reveal.Visible = true
+	reveal.Visible = HudState.Mode == "Roll"
 	newBadge.Visible = false
 	bonusChip.Visible = false
 	rarityLabel.Text = "🎲 Rolling..."
@@ -523,7 +523,7 @@ local function doRoll()
 	if remaining > 0 then
 		task.wait(remaining)
 	end
-	rollName.Text = "ROLL"
+	rollName.Text = if state.AutoRoll then "AUTO" else "ROLL"
 	state.Busy = false
 end
 
@@ -545,6 +545,7 @@ autoButton.Activated:Connect(function()
 	end
 	state.AutoRoll = not state.AutoRoll
 	renderAutoButton()
+	rollName.Text = if state.AutoRoll then "AUTO" else "ROLL"
 end)
 
 closeRollButton.Activated:Connect(function()
@@ -568,11 +569,8 @@ local function applyMode(mode)
 	autoButton.Visible = rolling
 	closeRollButton.Visible = rolling
 	leftColumn.Visible = mode ~= "Build"
+	-- l'Auto Roll continue même fenêtre fermée ; la révélation ne s'affiche que dans la fenêtre des dés
 	reveal.Visible = rolling and (state.Revealing or nameLabel.Text ~= "")
-	if not rolling then
-		state.AutoRoll = false
-		renderAutoButton()
-	end
 	if mode == "Build" then
 		inventoryPanel.Visible = false
 		indexPanel.Visible = false

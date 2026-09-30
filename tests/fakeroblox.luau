@@ -206,18 +206,36 @@ playerGui.Parent = localPlayer
 rawget(Players, "__props").LocalPlayer = localPlayer
 
 ---------------------------------------------------------------- tâches (exécution immédiate)
--- une tâche s'exécute jusqu'à son premier task.wait, puis reste en pause (évite les boucles infinies)
+-- Les tâches s'exécutent jusqu'à leur task.wait, puis attendent runTasks() (qui simule le temps qui passe)
+local parked = {}
+local function start(fn, ...)
+	local thread = coroutine.create(fn)
+	local ok, err = coroutine.resume(thread, ...)
+	if not ok then error(err) end
+end
 task = {
-	spawn = function(fn, ...) coroutine.wrap(fn)(...) end,
-	defer = function(fn, ...) coroutine.wrap(fn)(...) end,
-	delay = function(_, fn, ...) coroutine.wrap(fn)(...) end,
+	spawn = start,
+	defer = start,
+	delay = function(_, fn, ...) start(fn, ...) end,
 	wait = function()
 		if coroutine.isyieldable() then
+			table.insert(parked, (coroutine.running()))
 			coroutine.yield()
 		end
 		return 0
 	end,
 }
+function runTasks(steps)
+	for _ = 1, steps or 300 do
+		local list = parked
+		parked = {}
+		if #list == 0 then return end
+		for _, thread in list do
+			local ok, err = coroutine.resume(thread)
+			if not ok then error(err) end
+		end
+	end
+end
 RaycastParams = { new = function() return {} end }
 rawget(service("HttpService"), "__props").JSONDecode = function(_, text) return _G_JSON and _G_JSON[text] or {} end
 local workspaceInstance = service("Workspace")

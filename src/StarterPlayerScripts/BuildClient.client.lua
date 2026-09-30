@@ -401,6 +401,14 @@ sortButton.Activated:Connect(function()
 	renderBuildPanel()
 end)
 
+-- clic sur un onglet : affiche cette catégorie
+for category, button in tabButtons do
+	button.Activated:Connect(function()
+		state.Tab = category
+		renderBuildPanel()
+	end)
+end
+
 ---------------------------------------------------------------- fantôme et cibles
 
 local function destroyGhost()

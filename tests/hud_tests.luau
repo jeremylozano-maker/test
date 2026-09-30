@@ -90,8 +90,17 @@ check("Roll : Build caché", not shown(build))
 check("Roll : chances '1 in N' affichées", find(function(t) return t:match("^1 in %d+$") ~= nil end) ~= nil)
 button("🔒 Auto").Activated:Fire()
 check("Auto verrouillé : renvoie vers les Skills", find(function(t) return t == "🌳 Skills !" end) ~= nil)
+runTasks() -- fin de l'animation du roll
+-- Auto Roll débloqué : il continue après la fermeture de la fenêtre
+snapshot.Skills.AutoRoll = 1
+dataSync.OnClientEvent:Fire(snapshot)
+button("Auto : OFF").Activated:Fire()
+check("Auto Roll activé", find(function(t) return t == "Auto : ON" end) ~= nil)
 button("Close").Activated:Fire()
 check("Close : retour à l'écran normal", HudState.Mode == "Main" and shown(build))
+check("Close : Auto Roll toujours actif", find(function(t) return t == "Auto : ON" end) ~= nil)
+check("Close : le bouton ROLL indique AUTO", find(function(t) return t == "AUTO" end) ~= nil)
+roll = button("AUTO")
 
 -- Build
 build.Activated:Fire()
@@ -104,6 +113,19 @@ check("Build : Coins cachés (fenêtre à gauche)", not shown(find(function(t) r
 check("Build : compteur 0 / 40", shown(find(function(t) return t == "0 / 40" end)))
 check("Build : case Wood Cube ×5", find(function(t) return t == "×5" end) ~= nil)
 check("Build : onglet Blocks n'affiche pas le canon", find(function(t) return t == "Basic Cannon" end) == nil)
+find(function(t) return t == "⚔️ Weapons" end).Activated:Fire()
+check("onglet Weapons : affiche le canon", find(function(t) return t == "Basic Cannon" end) ~= nil)
+local function inBuildUI(label)
+	for _, object in playerGui.BuildUI:GetDescendants() do
+		if object.Text == label then return true end
+	end
+	return false
+end
+check("onglet Weapons : n'affiche plus le cube", not inBuildUI("Wood Cube"))
+find(function(t) return t == "🔺 Traps" end).Activated:Fire()
+check("onglet Traps : affiche le piège", find(function(t) return t == "Wooden Spike Trap" end) ~= nil)
+find(function(t) return t == "🧱 Blocks" end).Activated:Fire()
+check("onglet Blocks : retour au cube", inBuildUI("Wood Cube") and not inBuildUI("Basic Cannon"))
 check("Build : bouton Clear plot", shown(find(function(t) return t == "🧹 Clear plot" end)))
 local sortButton = find(function(t) return t:find("Rareté", 1, true) ~= nil end)
 check("Build : bouton de tri", sortButton ~= nil)
