@@ -190,11 +190,12 @@ end
 ---------------------------------------------------------------- fantôme et cibles
 
 local function destroyGhost()
+	-- on retire la surbrillance avant de détruire le fantôme, sinon elle est détruite avec lui
+	ghostHighlight.Parent = nil
 	if state.Ghost then
 		state.Ghost:Destroy()
 		state.Ghost = nil
 	end
-	ghostHighlight.Parent = nil
 end
 
 function selectItem(itemId)
