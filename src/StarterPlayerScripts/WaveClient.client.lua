@@ -166,9 +166,9 @@ local function statRow(order, text, color)
 	return badge
 end
 
-local killsBadge = statRow(1, "🧟 Zombies tués", Color3.fromRGB(120, 220, 120))
-local coinsBadge = statRow(2, "🪙 Coins gagnés", UIKit.YELLOW)
-local wavesBadge = statRow(3, "🌊 Vagues survécues", Color3.fromRGB(110, 190, 255))
+local killsBadge = statRow(1, "🧟 Zombies killed", Color3.fromRGB(120, 220, 120))
+local coinsBadge = statRow(2, "🪙 Coins earned", UIKit.YELLOW)
+local wavesBadge = statRow(3, "🌊 Waves survived", Color3.fromRGB(110, 190, 255))
 
 local checkpointLabel = UIKit.label({
 	Parent = statsList,
@@ -191,7 +191,7 @@ local reviveButton = makeButton({
 	Parent = buttonRow,
 	Size = UDim2.new(0.48, 0, 1, 0),
 	BackgroundColor3 = UIKit.PURPLE,
-	Text = if RunService:IsStudio() then "💎 REVIVE (test)" else "💎 REVIVE (bientôt)",
+	Text = if RunService:IsStudio() then "💎 REVIVE (test)" else "💎 REVIVE (soon)",
 	Studs = 3,
 })
 
@@ -201,7 +201,7 @@ local acceptButton = makeButton({
 	Position = UDim2.fromScale(1, 0),
 	Size = UDim2.new(0.48, 0, 1, 0),
 	BackgroundColor3 = UIKit.GREEN,
-	Text = "✔ ACCEPTER",
+	Text = "✔ ACCEPT",
 	Studs = 3,
 })
 
@@ -231,9 +231,9 @@ local function update()
 	local waveTotal = math.max(1, waveInfo:GetAttribute("WaveTotal") or 1)
 	local inWaves = phase == "Wave"
 
-	waveLabel.Text = if inWaves and nextWaveIn > 0 then string.format("Wave %d dans %d...", wave, nextWaveIn) else "Wave " .. wave
+	waveLabel.Text = if inWaves and nextWaveIn > 0 then string.format("Wave %d in %d...", wave, nextWaveIn) else "Wave " .. wave
 	local bossWave = math.ceil(wave / 10) * 10
-	bossLabel.Text = if bossWave == wave then "🐙 ??? CETTE VAGUE !" else string.format("🐙 ??? à la vague %d", bossWave)
+	bossLabel.Text = if bossWave == wave then "🐙 ??? THIS WAVE!" else string.format("🐙 ??? at wave %d", bossWave)
 
 	enemiesBack.Visible = inWaves and nextWaveIn <= 0
 	enemiesLabel.Text = string.format("🧟 %d left", enemiesLeft)
@@ -255,14 +255,14 @@ local function update()
 	end
 	summaryPanel.Visible = isOwner and (isDead or showStopSummary)
 	if summaryPanel.Visible then
-		summaryTitle.Text = if isDead then "💀 TON CORE EST DÉTRUIT" else "⏹️ SESSION TERMINÉE"
+		summaryTitle.Text = if isDead then "💀 YOUR CORE WAS DESTROYED" else "⏹️ SESSION OVER"
 		summaryHeader.BackgroundColor3 = if isDead then UIKit.RED else UIKit.ORANGE
 		killsBadge.Text = tostring(waveInfo:GetAttribute("RunKills") or 0)
 		coinsBadge.Text = tostring(waveInfo:GetAttribute("RunCoins") or 0)
 		wavesBadge.Text = tostring(waveInfo:GetAttribute("RunWaves") or 0)
 		checkpointLabel.Text = if isDead
-			then "Tu reprendras à la vague " .. (waveInfo:GetAttribute("CheckpointWave") or 1)
-			else "Prochaine vague : " .. wave
+			then "You will restart at wave " .. (waveInfo:GetAttribute("CheckpointWave") or 1)
+			else "Next wave: " .. wave
 		reviveButton.Visible = isDead
 		acceptButton.Visible = isDead
 		okButton.Visible = not isDead

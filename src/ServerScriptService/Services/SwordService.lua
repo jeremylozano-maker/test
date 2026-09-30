@@ -112,7 +112,7 @@ local function giveSword(player)
 	local backpack = player:WaitForChild("Backpack")
 	local tool = makeSword()
 	tool.Name = "Sword"
-	tool.ToolTip = "Clique pour frapper les zombies"
+	tool.ToolTip = "Click to hit zombies"
 	local handle = tool:WaitForChild("Handle")
 	local sound = Instance.new("Sound")
 	sound.Name = "Slash"

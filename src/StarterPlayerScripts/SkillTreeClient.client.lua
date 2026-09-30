@@ -30,12 +30,12 @@ local HUB_COLOR = Color3.fromRGB(255, 190, 60)
 local DRAG_THRESHOLD = 6 -- pixels avant qu'un clic devienne un déplacement
 
 local REFUSAL_TEXT = {
-	NotEnoughCoins = "❌ Pas assez de Coins",
-	Locked = "🔒 Prérequis manquant",
-	MaxLevel = "⭐ Niveau maximum atteint",
-	ComingSoon = "🚧 Bientôt disponible",
-	InvalidSkill = "❌ Compétence invalide",
-	NoData = "⏳ Données en cours de chargement",
+	NotEnoughCoins = "❌ Not enough Coins",
+	Locked = "🔒 Requirement missing",
+	MaxLevel = "⭐ Max level reached",
+	ComingSoon = "🚧 Coming soon",
+	InvalidSkill = "❌ Invalid skill",
+	NoData = "⏳ Loading your data",
 }
 
 local state = {
@@ -200,8 +200,8 @@ UIKit.label({
 	Position = UDim2.new(0.5, 0, 1, -8),
 	Size = UDim2.new(0.9, 0, 0, 22),
 	Text = if UserInputService.TouchEnabled and not UserInputService.MouseEnabled
-		then "Pince pour zoomer • Glisse pour déplacer • Touche un hexagone pour l'acheter"
-		else "Molette : zoom • Glisser : déplacer • Clique un hexagone pour l'acheter • Touche K",
+		then "Pinch to zoom • Drag to move • Tap a hexagon to buy it"
+		else "Wheel: zoom • Drag: move • Click a hexagon to buy it • Key K",
 	TextColor3 = UIKit.GREY,
 	Font = UIKit.TEXT_FONT,
 })
@@ -483,7 +483,7 @@ local function renderNode(skillId)
 	node.Icon.Visible = not isClosed
 	node.Lock.Visible = isClosed
 	node.Lock.Text = if nodeState == "ComingSoon" then "🚧" else "🔒"
-	node.Level.Text = if nodeState == "ComingSoon" then "BIENTÔT" else string.format("%d/%d", level, skill.MaxLevel)
+	node.Level.Text = if nodeState == "ComingSoon" then "SOON" else string.format("%d/%d", level, skill.MaxLevel)
 	node.Max.Visible = nodeState == "Maxed"
 	node.Ready.Visible = SkillTree.CanUpgrade(skills, getCoins(), skillId) == true
 
@@ -512,7 +512,7 @@ local function renderHub()
 	for _, skillId in SkillTree.GetTreeSkillIds() do
 		total += SkillTree.GetLevel(getSkills(), skillId)
 	end
-	hubLevelLabel.Text = "Niveau total " .. total
+	hubLevelLabel.Text = "Total level " .. total
 end
 
 ---------------------------------------------------------------- encart d'infos (survol / toucher)
@@ -563,9 +563,9 @@ local hintText = infoText(118, 22, UIKit.GREEN)
 local function prerequisitesText(skillId)
 	local parts = {}
 	for _, requirement in SkillTree.GetMissingPrerequisites(getSkills(), skillId) do
-		table.insert(parts, string.format("%s niv. %d", Config.Skills[requirement.Skill].Name, requirement.Level))
+		table.insert(parts, string.format("%s lvl %d", Config.Skills[requirement.Skill].Name, requirement.Level))
 	end
-	return "🔒 Requiert : " .. table.concat(parts, ", ")
+	return "🔒 Requires: " .. table.concat(parts, ", ")
 end
 
 local function renderInfo()
@@ -583,24 +583,24 @@ local function renderInfo()
 	titleText.Text = string.format("%s   •   %d/%d", skillTitle(skillId, level), level, skill.MaxLevel)
 
 	if reason == "MaxLevel" then
-		bonusText.Text = "Bonus : " .. SkillTree.DescribeBonus(skillId, level)
+		bonusText.Text = "Bonus: " .. SkillTree.DescribeBonus(skillId, level)
 		costText.Text = ""
 		statusText.Text = "⭐ MAX LEVEL"
 		statusText.TextColor3 = GOLD
 		hintText.Text = ""
 		return
 	end
-	bonusText.Text = string.format("Bonus : %s   ➜   %s",
+	bonusText.Text = string.format("Bonus: %s   ➜   %s",
 		SkillTree.DescribeBonus(skillId, level), SkillTree.DescribeBonus(skillId, level + 1))
 	cost = cost or SkillTree.GetSkillCost(skillId, level + 1)
-	costText.Text = "Coût : 🪙 " .. formatNumber(cost)
+	costText.Text = "Cost: 🪙 " .. formatNumber(cost)
 	costText.TextColor3 = if getCoins() >= cost then UIKit.YELLOW else UIKit.RED
 	statusText.TextColor3 = UIKit.RED
 	statusText.Text = if reason == "Locked" then prerequisitesText(skillId) else (REFUSAL_TEXT[reason] or skill.Description)
 	if not reason then
 		statusText.TextColor3 = UIKit.GREY
 	end
-	hintText.Text = if canUpgrade then "👆 Clique pour améliorer" else ""
+	hintText.Text = if canUpgrade then "👆 Click to upgrade" else ""
 end
 
 function showInfo(skillId)
@@ -649,7 +649,7 @@ end
 
 local function refuse(skillId, reason)
 	playSound("Error")
-	floatText(skillId, REFUSAL_TEXT[reason] or "❌ Achat impossible", UIKit.RED)
+	floatText(skillId, REFUSAL_TEXT[reason] or "❌ Purchase failed", UIKit.RED)
 	task.spawn(shakeNode, skillId)
 end
 
@@ -660,7 +660,7 @@ local function celebrate(skillId, level, cost)
 	HexUI.setColor(node.Fill, Color3.new(1, 1, 1))
 	pop(node, 1.3)
 	burst(skillId, if level >= skill.MaxLevel then GOLD else color)
-	floatText(skillId, if level >= skill.MaxLevel then "⭐ MAX !" else "-" .. formatNumber(cost) .. " 🪙", GOLD)
+	floatText(skillId, if level >= skill.MaxLevel then "⭐ MAX!" else "-" .. formatNumber(cost) .. " 🪙", GOLD)
 	playSound(if level >= skill.MaxLevel then "Max" else "Purchase")
 	task.delay(0.12, renderNode, skillId)
 end

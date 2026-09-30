@@ -75,7 +75,7 @@ local function loadPlayer(player)
 		result = nil
 		canSave[player] = false
 	else
-		player:Kick("Impossible de charger tes données. Réessaie dans un instant.")
+		player:Kick("Could not load your data. Please rejoin in a moment.")
 		return
 	end
 

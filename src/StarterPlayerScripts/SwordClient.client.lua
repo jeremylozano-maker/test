@@ -38,10 +38,10 @@ local function render()
 	local damage = SkillTree.GetSwordDamage(snapshot.Skills)
 	local cost = SkillTree.GetCost("Sword", level)
 	if cost then
-		upgradeButton.Text = string.format("⚔️ Nv %d • %d dmg\n⬆️ %d 🪙", level, damage, cost)
+		upgradeButton.Text = string.format("⚔️ Lvl %d • %d dmg\n⬆️ %d 🪙", level, damage, cost)
 		upgradeButton.BackgroundColor3 = if snapshot.Coins >= cost then UPGRADE_COLOR else UIKit.BUTTON_COLOR
 	else
-		upgradeButton.Text = string.format("⚔️ Nv %d • %d dmg\nMAX", level, damage)
+		upgradeButton.Text = string.format("⚔️ Lvl %d • %d dmg\nMAX", level, damage)
 		upgradeButton.BackgroundColor3 = UIKit.BUTTON_COLOR
 	end
 end

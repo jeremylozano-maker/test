@@ -195,21 +195,21 @@ end
 function SkillTree.DescribeBonus(skillId, level)
 	local skill = Config.Skills[skillId]
 	if not skill.Bonus then
-		return if level >= 1 then "Débloqué" else "Pas encore débloqué"
+		return if level >= 1 then "Unlocked" else "Locked"
 	end
 	local value = SkillTree.GetSkillBonus(skillId, level)
 	local format = skill.BonusFormat
 	if format == "Percent" then
 		return string.format("+%d%%%s", math.floor(value * 100 + 0.5), skill.BonusSuffix or "")
 	elseif format == "Cooldown" then
-		return string.format("%.2f s entre deux rolls", SkillTree.GetRollCooldown({ [skillId] = level }))
+		return string.format("%.2fs between rolls", SkillTree.GetRollCooldown({ [skillId] = level }))
 	elseif format == "Pity" then
 		if level <= 0 then
-			return "Aucune garantie"
+			return "No guarantee"
 		end
-		return string.format("Rare+ garanti tous les %d rolls", SkillTree.GetPityThreshold({ [skillId] = level }))
+		return string.format("Rare+ guaranteed every %d rolls", SkillTree.GetPityThreshold({ [skillId] = level }))
 	elseif format == "Hours" then
-		return string.format("%d h de rolls hors ligne", value)
+		return string.format("%dh of offline rolls", value)
 	end
 	return string.format("+%d%s", value, skill.BonusSuffix or "")
 end

@@ -91,7 +91,7 @@ check("Coins affichés 1,000", findText(treeGui, function(text) return text == "
 -- survol de Luck -> encart d'infos (sans bouton)
 findNode("Luck").MouseEnter:Fire()
 check("encart : titre LUCK 0/10", findText(treeGui, function(text) return text:find("🍀 LUCK", 1, true) and text:find("0/10", 1, true) end) ~= nil)
-check("encart : coût 100", findText(treeGui, function(text) return text == "Coût : 🪙 100" end) ~= nil)
+check("encart : coût 100", findText(treeGui, function(text) return text == "Cost: 🪙 100" end) ~= nil)
 check("encart : bonus +15%", findText(treeGui, function(text) return text:find("+15%% Luck") ~= nil end) ~= nil)
 check("aucun bouton UPGRADE (achat direct)", findText(treeGui, function(text) return text:find("UPGRADE") ~= nil end) == nil)
 check("le survol n'achète rien", profile.Skills.Luck == 0 and purchaseCalls == 0)
@@ -112,8 +112,8 @@ local callsBefore = purchaseCalls
 findNode("AutoRoll").Activated:Fire()
 check("verrouillé : aucune requête serveur", purchaseCalls == callsBefore)
 check("verrouillé : Auto Roll toujours 0", profile.Skills.AutoRoll == 0)
-check("verrouillé : prérequis affiché", findText(treeGui, function(text) return text:find("Requiert : Better Rolls niv. 2", 1, true) ~= nil end) ~= nil)
-check("verrouillé : message flottant", findText(treeGui, function(text) return text:find("Prérequis manquant", 1, true) ~= nil end) ~= nil)
+check("verrouillé : prérequis affiché", findText(treeGui, function(text) return text:find("Requires: Better Rolls lvl 2", 1, true) ~= nil end) ~= nil)
+check("verrouillé : message flottant", findText(treeGui, function(text) return text:find("Requirement missing", 1, true) ~= nil end) ~= nil)
 
 -- débloquer Auto Roll en cliquant 2 fois sur Better Rolls
 findNode("BetterRolls").Activated:Fire()
@@ -128,7 +128,7 @@ dataSync.OnClientEvent:Fire(snapshot())
 callsBefore = purchaseCalls
 findNode("CoreHP").Activated:Fire()
 check("pas assez de Coins : aucune requête", purchaseCalls == callsBefore)
-check("message 'Pas assez de Coins'", findText(treeGui, function(text) return text:find("Pas assez de Coins", 1, true) ~= nil end) ~= nil)
+check("message 'Not enough Coins'", findText(treeGui, function(text) return text:find("Not enough Coins", 1, true) ~= nil end) ~= nil)
 
 -- bientôt disponible
 profile.Coins = 100000
@@ -136,8 +136,8 @@ dataSync.OnClientEvent:Fire(snapshot())
 callsBefore = purchaseCalls
 findNode("OfflineRolls").Activated:Fire()
 check("Offline Rolls : aucune requête", purchaseCalls == callsBefore)
-check("Offline Rolls : 'Bientôt disponible'", findText(treeGui, function(text) return text:find("Bientôt disponible", 1, true) ~= nil end) ~= nil)
-check("hexagone Offline Rolls marqué BIENTÔT", findText(findNode("OfflineRolls"), function(text) return text == "BIENTÔT" end) ~= nil)
+check("Offline Rolls : 'Coming soon'", findText(treeGui, function(text) return text:find("Coming soon", 1, true) ~= nil end) ~= nil)
+check("hexagone Offline Rolls marqué BIENTÔT", findText(findNode("OfflineRolls"), function(text) return text == "SOON" end) ~= nil)
 
 -- niveau max
 profile.Skills.RollSpeed = 3

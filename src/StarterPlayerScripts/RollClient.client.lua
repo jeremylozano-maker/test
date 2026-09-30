@@ -164,10 +164,10 @@ end
 local function renderAutoButton()
 	if not isAutoUnlocked() then
 		state.AutoRoll = false
-		autoName.Text = if os.clock() < autoHintUntil then "🌳 Skills !" else "🔒 Auto"
+		autoName.Text = if os.clock() < autoHintUntil then "🌳 Skills!" else "🔒 Auto"
 		autoButton.BackgroundColor3 = UIKit.darken(UIKit.BUTTON_COLOR, 0.3)
 	else
-		autoName.Text = if state.AutoRoll then "Auto : ON" else "Auto : OFF"
+		autoName.Text = if state.AutoRoll then "Auto: ON" else "Auto: OFF"
 		autoButton.BackgroundColor3 = if state.AutoRoll then UIKit.GREEN else UIKit.BUTTON_COLOR
 	end
 end
@@ -462,7 +462,7 @@ local function playReveal(result)
 	newBadge.Visible = result.IsNew
 	local bonusItem = result.BonusItemId and Items.ById[result.BonusItemId]
 	if bonusItem then
-		bonusLabel.Text = string.format("🎁 BONUS : %s %s", bonusItem.Icon, bonusItem.Name)
+		bonusLabel.Text = string.format("🎁 BONUS: %s %s", bonusItem.Icon, bonusItem.Name)
 		bonusChip.BackgroundColor3 = UIKit.darken(Rarities.Info[bonusItem.Rarity].Color, 0.25)
 		bonusChip.Visible = true
 	end

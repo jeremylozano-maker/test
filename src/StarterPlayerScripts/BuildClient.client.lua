@@ -259,11 +259,11 @@ local clearConfirmUntil = 0
 -- Tri : chaque clic passe au tri suivant (du plus grand au plus petit)
 -- Stat = statistique affichée sur chaque case pendant ce tri
 local SORTS = {
-	{ Label = "⭐ Rareté", Value = function(item) return Rarities.Info[item.Rarity].Rank end },
-	{ Label = "❤️ PV", Stat = "HP", Icon = "❤️" },
-	{ Label = "💥 Dégâts", Stat = "Damage", Icon = "💥" },
-	{ Label = "🎯 Portée", Stat = "Range", Icon = "🎯" },
-	{ Label = "📦 Quantité", Value = function(item) return state.Inventory[item.Id] or 0 end },
+	{ Label = "⭐ Rarity", Value = function(item) return Rarities.Info[item.Rarity].Rank end },
+	{ Label = "❤️ HP", Stat = "HP", Icon = "❤️" },
+	{ Label = "💥 Damage", Stat = "Damage", Icon = "💥" },
+	{ Label = "🎯 Range", Stat = "Range", Icon = "🎯" },
+	{ Label = "📦 Amount", Value = function(item) return state.Inventory[item.Id] or 0 end },
 }
 
 local sortButton = makeButton({
@@ -389,7 +389,7 @@ local function renderBuildPanel()
 	if #items == 0 then
 		UIKit.label({
 			Parent = itemGrid,
-			Text = "Rien ici.\nFais des 🎲 ROLL !",
+			Text = "Nothing here.\nGo 🎲 ROLL!",
 			TextColor3 = UIKit.GREY,
 			Font = UIKit.TEXT_FONT,
 		})
@@ -632,7 +632,7 @@ clearButton.Activated:Connect(function()
 	if os.clock() > clearConfirmUntil then
 		-- 1er clic : demander confirmation
 		clearConfirmUntil = os.clock() + CLEAR_CONFIRM_TIME
-		clearButton.Text = "⚠️ Sûr ?"
+		clearButton.Text = "⚠️ Sure?"
 		task.delay(CLEAR_CONFIRM_TIME, function()
 			if os.clock() >= clearConfirmUntil then
 				clearButton.Text = "🧹 Clear plot"
