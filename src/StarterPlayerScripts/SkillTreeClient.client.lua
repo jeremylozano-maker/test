@@ -40,8 +40,8 @@ local REFUSAL_TEXT = {
 local state = {
 	Snapshot = nil,
 	Open = false,
-	Selected = nil, -- skillId affiché dans la fenêtre d'amélioration
-	Pending = false, -- achat en cours (évite le spam)
+	Hovered = nil, -- skillId affiché dans l'encart d'infos
+	Pending = false, -- achat en cours (un seul à la fois)
 	NodeStates = {}, -- dernier état affiché, pour animer les déblocages
 	Zoom = 1,
 	Pan = Vector2.zero,
@@ -198,8 +198,8 @@ UIKit.label({
 	Position = UDim2.new(0.5, 0, 1, -8),
 	Size = UDim2.new(0.9, 0, 0, 22),
 	Text = if UserInputService.TouchEnabled and not UserInputService.MouseEnabled
-		then "Pince pour zoomer • Glisse pour déplacer • Touche un hexagone pour l'améliorer"
-		else "Molette : zoom • Glisser : déplacer • Clique un hexagone pour l'améliorer • Touche K",
+		then "Pince pour zoomer • Glisse pour déplacer • Touche un hexagone pour l'acheter"
+		else "Molette : zoom • Glisser : déplacer • Clique un hexagone pour l'acheter • Touche K",
 	TextColor3 = UIKit.GREY,
 	Font = UIKit.TEXT_FONT,
 })
@@ -340,7 +340,7 @@ end
 ---------------------------------------------------------------- nœuds hexagonaux
 
 local nodes = {} -- [skillId] = { Button, Scale, Glow, Border, Fill, Icon, Name, Level, Lock, Max, Ready }
-local openPopup -- défini plus bas
+local showInfo, hideInfo, requestUpgrade -- définis plus bas
 
 local function nodeLabel(parent, y, height, text, font)
 	return UIKit.label({
@@ -406,17 +406,21 @@ local function createNode(skillId)
 	button.MouseEnter:Connect(function()
 		TweenService:Create(node.Scale, TweenInfo.new(0.12), { Scale = 1.1 }):Play()
 		playSound("Hover")
+		showInfo(skillId)
 	end)
 	button.MouseLeave:Connect(function()
 		TweenService:Create(node.Scale, TweenInfo.new(0.12), { Scale = 1 }):Play()
+		hideInfo(skillId)
 	end)
+	-- un clic = un achat (pas de fenêtre de confirmation)
 	button.Activated:Connect(function()
-		-- un glisser pour déplacer l'arbre ne doit pas ouvrir la fenêtre
+		-- un glisser pour déplacer l'arbre ne doit pas acheter
 		if (state.Drag and state.Drag.Moved) or os.clock() - state.LastDragEnd < 0.15 then
 			return
 		end
 		playSound("Click")
-		openPopup(skillId)
+		showInfo(skillId)
+		requestUpgrade(skillId)
 	end)
 	nodes[skillId] = node
 end
@@ -509,25 +513,38 @@ local function renderHub()
 	hubLevelLabel.Text = "Niveau total " .. total
 end
 
----------------------------------------------------------------- fenêtre d'amélioration
+---------------------------------------------------------------- encart d'infos (survol / toucher)
+-- Aucun bouton ici : l'achat se fait directement en cliquant sur l'hexagone.
 
-local popup, popupBody, popupTitle, popupHeader, popupClose = UIKit.makePanel({
+local infoPanel = create("Frame", {
 	Parent = gui,
-	Title = "",
 	AnchorPoint = Vector2.new(0.5, 1),
 	Position = UDim2.new(0.5, 0, 1, -36),
-	Size = UDim2.new(0.9, 0, 0, 300),
-	MaxSize = Vector2.new(540, 300),
-	MinSize = Vector2.new(300, 300),
+	Size = UDim2.new(0.9, 0, 0, 150),
+	BackgroundColor3 = UIKit.PANEL_COLOR,
+	BorderSizePixel = 0,
+	Visible = false,
 	ZIndex = 10,
+}, {
+	corner(16),
+	stroke(4),
+	UIKit.shine(Color3.fromRGB(165, 165, 185)),
+	create("UISizeConstraint", { MaxSize = Vector2.new(560, 150) }),
 })
-local popupPosition = popup.Position
+UIKit.addStuds(infoPanel, 5)
 
-local function popupText(y, height, color, font)
+local infoAccent = create("Frame", {
+	Parent = infoPanel,
+	Position = UDim2.new(0, 10, 0, 10),
+	Size = UDim2.new(0, 10, 1, -20),
+	BorderSizePixel = 0,
+}, { corner(5) })
+
+local function infoText(y, height, color, font)
 	return UIKit.label({
-		Parent = popupBody,
-		Position = UDim2.new(0, 4, 0, y),
-		Size = UDim2.new(1, -8, 0, height),
+		Parent = infoPanel,
+		Position = UDim2.new(0, 32, 0, y),
+		Size = UDim2.new(1, -44, 0, height),
 		Text = "",
 		TextColor3 = color or UIKit.WHITE,
 		Font = font or UIKit.TITLE_FONT,
@@ -535,30 +552,11 @@ local function popupText(y, height, color, font)
 	})
 end
 
-local levelText = popupText(0, 28)
-local descriptionText = popupText(32, 20, UIKit.GREY, UIKit.TEXT_FONT)
-local bonusText = popupText(58, 26, Color3.fromRGB(130, 230, 140))
-local costText = popupText(88, 26, UIKit.YELLOW)
-local statusText = popupText(118, 22, UIKit.RED, UIKit.TEXT_FONT)
-
-local upgradeButton = makeButton({
-	Parent = popupBody,
-	AnchorPoint = Vector2.new(0, 1),
-	Position = UDim2.new(0, 0, 1, 0),
-	Size = UDim2.new(0.62, -6, 0, 58),
-	BackgroundColor3 = UIKit.GREEN,
-	Text = "⬆️ UPGRADE",
-	Studs = 3,
-})
-
-local cancelButton = makeButton({
-	Parent = popupBody,
-	AnchorPoint = Vector2.new(1, 1),
-	Position = UDim2.new(1, 0, 1, 0),
-	Size = UDim2.new(0.38, -6, 0, 58),
-	Text = "CANCEL",
-	Studs = 2,
-})
+local titleText = infoText(8, 30)
+local bonusText = infoText(42, 22, Color3.fromRGB(130, 230, 140))
+local costText = infoText(68, 22, UIKit.YELLOW)
+local statusText = infoText(94, 20, UIKit.RED, UIKit.TEXT_FONT)
+local hintText = infoText(118, 22, UIKit.GREEN)
 
 local function prerequisitesText(skillId)
 	local parts = {}
@@ -568,10 +566,10 @@ local function prerequisitesText(skillId)
 	return "🔒 Requiert : " .. table.concat(parts, ", ")
 end
 
-local function renderPopup()
-	local skillId = state.Selected
+local function renderInfo()
+	local skillId = state.Hovered
+	infoPanel.Visible = skillId ~= nil
 	if not skillId then
-		popup.Visible = false
 		return
 	end
 	local skill = Config.Skills[skillId]
@@ -579,97 +577,112 @@ local function renderPopup()
 	local level = SkillTree.GetLevel(skills, skillId)
 	local canUpgrade, reason, cost = SkillTree.CanUpgrade(skills, getCoins(), skillId)
 
-	popup.Visible = true
-	popupHeader.BackgroundColor3 = Config.Branches[skill.Branch].Color
-	popupTitle.Text = skillTitle(skillId, level)
-	descriptionText.Text = skill.Description
+	infoAccent.BackgroundColor3 = Config.Branches[skill.Branch].Color
+	titleText.Text = string.format("%s   •   %d/%d", skillTitle(skillId, level), level, skill.MaxLevel)
 
 	if reason == "MaxLevel" then
-		levelText.Text = string.format("Niveau %d / %d", level, skill.MaxLevel)
 		bonusText.Text = "Bonus : " .. SkillTree.DescribeBonus(skillId, level)
 		costText.Text = ""
 		statusText.Text = "⭐ MAX LEVEL"
 		statusText.TextColor3 = GOLD
-	else
-		levelText.Text = string.format("Niveau %d / %d   ➜   %d", level, skill.MaxLevel, level + 1)
-		bonusText.Text = string.format("Bonus : %s   ➜   %s",
-			SkillTree.DescribeBonus(skillId, level), SkillTree.DescribeBonus(skillId, level + 1))
-		cost = cost or SkillTree.GetSkillCost(skillId, level + 1)
-		costText.Text = "Coût : 🪙 " .. formatNumber(cost)
-		costText.TextColor3 = if getCoins() >= cost then UIKit.YELLOW else UIKit.RED
-		statusText.TextColor3 = UIKit.RED
-		statusText.Text = if reason == "Locked" then prerequisitesText(skillId) else (REFUSAL_TEXT[reason] or "")
+		hintText.Text = ""
+		return
 	end
-
-	upgradeButton.Visible = reason ~= "MaxLevel"
-	upgradeButton.BackgroundColor3 = if canUpgrade then UIKit.GREEN else UIKit.BUTTON_COLOR
-	upgradeButton.Text = if state.Pending then "..." elseif canUpgrade then "⬆️ UPGRADE" else "🔒 UPGRADE"
-	cancelButton.Text = if reason == "MaxLevel" then "OK" else "CANCEL"
+	bonusText.Text = string.format("Bonus : %s   ➜   %s",
+		SkillTree.DescribeBonus(skillId, level), SkillTree.DescribeBonus(skillId, level + 1))
+	cost = cost or SkillTree.GetSkillCost(skillId, level + 1)
+	costText.Text = "Coût : 🪙 " .. formatNumber(cost)
+	costText.TextColor3 = if getCoins() >= cost then UIKit.YELLOW else UIKit.RED
+	statusText.TextColor3 = UIKit.RED
+	statusText.Text = if reason == "Locked" then prerequisitesText(skillId) else (REFUSAL_TEXT[reason] or skill.Description)
+	if not reason then
+		statusText.TextColor3 = UIKit.GREY
+	end
+	hintText.Text = if canUpgrade then "👆 Clique pour améliorer" else ""
 end
 
-function openPopup(skillId)
-	state.Selected = skillId
-	renderPopup()
-	popup.Position = popupPosition + UDim2.fromOffset(0, 40)
-	TweenService:Create(popup, TweenInfo.new(0.2, Enum.EasingStyle.Quad), { Position = popupPosition }):Play()
+function showInfo(skillId)
+	state.Hovered = skillId
+	renderInfo()
 end
 
-local function closePopup()
-	state.Selected = nil
-	popup.Visible = false
+function hideInfo(skillId)
+	if skillId == nil or state.Hovered == skillId then
+		state.Hovered = nil
+		renderInfo()
+	end
 end
 
-local function shakePopup()
-	for _, offset in { -12, 12, -8, 8, -4, 0 } do
-		popup.Position = popupPosition + UDim2.fromOffset(offset, 0)
+---------------------------------------------------------------- achat au clic
+
+-- petit texte qui monte au-dessus d'un hexagone
+local function floatText(skillId, text, color)
+	local center = toCanvas(Config.Skills[skillId].Position)
+	local label = UIKit.label({
+		Parent = canvas,
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.fromOffset(center.X, center.Y - Layout.NodeSize * 0.45),
+		Size = UDim2.fromOffset(240, 28),
+		Text = text,
+		TextColor3 = color,
+		ZIndex = 9,
+	})
+	TweenService:Create(label, TweenInfo.new(0.9), {
+		Position = UDim2.fromOffset(center.X, center.Y - Layout.NodeSize * 0.45 - 40),
+		TextTransparency = 1,
+		TextStrokeTransparency = 1,
+	}):Play()
+	Debris:AddItem(label, 1)
+end
+
+local function shakeNode(skillId)
+	local button = nodes[skillId].Button
+	local base = button.Position
+	for _, offset in { -8, 8, -5, 5, -2, 0 } do
+		button.Position = base + UDim2.fromOffset(offset, 0)
 		task.wait(0.03)
 	end
+	button.Position = base
 end
 
-local function refuse(reason)
+local function refuse(skillId, reason)
 	playSound("Error")
-	statusText.TextColor3 = UIKit.RED
-	statusText.Text = REFUSAL_TEXT[reason] or "❌ Achat impossible"
-	task.spawn(shakePopup)
+	floatText(skillId, REFUSAL_TEXT[reason] or "❌ Achat impossible", UIKit.RED)
+	task.spawn(shakeNode, skillId)
 end
 
-local function celebrate(skillId, level)
+local function celebrate(skillId, level, cost)
 	local node = nodes[skillId]
 	local skill = Config.Skills[skillId]
 	local color = Config.Branches[skill.Branch].Color
 	HexUI.setColor(node.Fill, Color3.new(1, 1, 1))
 	pop(node, 1.3)
 	burst(skillId, if level >= skill.MaxLevel then GOLD else color)
+	floatText(skillId, if level >= skill.MaxLevel then "⭐ MAX !" else "-" .. formatNumber(cost) .. " 🪙", GOLD)
 	playSound(if level >= skill.MaxLevel then "Max" else "Purchase")
 	task.delay(0.12, renderNode, skillId)
 end
 
-local function requestUpgrade()
-	local skillId = state.Selected
-	if not skillId or state.Pending then
+function requestUpgrade(skillId)
+	if state.Pending then
 		return
 	end
 	-- vérification locale uniquement pour le retour visuel ; le serveur revérifie tout
 	local canUpgrade, reason = SkillTree.CanUpgrade(getSkills(), getCoins(), skillId)
 	if not canUpgrade then
-		refuse(reason)
+		refuse(skillId, reason)
 		return
 	end
 	state.Pending = true
-	renderPopup()
 	local ok, result = pcall(Remotes.PurchaseSkill.InvokeServer, Remotes.PurchaseSkill, skillId)
 	state.Pending = false
 	if ok and type(result) == "table" and result.Ok then
-		celebrate(skillId, result.Level)
+		celebrate(skillId, result.Level, result.Cost)
 	else
-		refuse(if ok and type(result) == "table" then result.Reason else nil)
+		refuse(skillId, if ok and type(result) == "table" then result.Reason else nil)
 	end
-	renderPopup()
+	renderInfo()
 end
-
-upgradeButton.Activated:Connect(requestUpgrade)
-cancelButton.Activated:Connect(closePopup)
-popupClose.Activated:Connect(closePopup)
 
 ---------------------------------------------------------------- Coins (avec animation)
 
@@ -715,9 +728,7 @@ local function renderAll()
 	renderLines()
 	renderHub()
 	renderCoins()
-	if state.Selected and not state.Pending then
-		renderPopup()
-	end
+	renderInfo()
 	local anyReady = false
 	for skillId in nodes do
 		if SkillTree.CanUpgrade(getSkills(), getCoins(), skillId) == true then
@@ -748,7 +759,7 @@ local function setOpen(open)
 		hubScale.Scale = 0.6
 		TweenService:Create(hubScale, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 	else
-		closePopup()
+		hideInfo(nil)
 		state.Drag = nil
 		gui.Enabled = false
 	end
@@ -782,7 +793,7 @@ UserInputService.InputBegan:Connect(function(input)
 		return
 	end
 	local point = screenPoint(input)
-	if isInside(viewport, point) and not (popup.Visible and isInside(popup, point)) then
+	if isInside(viewport, point) then
 		state.Drag = { Input = input, Start = point, StartPan = state.Pan, Moved = false }
 	end
 end)

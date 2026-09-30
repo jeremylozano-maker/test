@@ -78,68 +78,77 @@ openButton.Activated:Fire()
 check("ouvert après clic sur SKILLS", treeGui.Enabled == true)
 check("Coins affichés 1,000", findText(treeGui, function(text) return text == "🪙 1,000" end) ~= nil)
 
--- clic sur Luck -> fenêtre d'amélioration
-findNode("Luck").Activated:Fire()
-check("fenêtre ouverte avec titre LUCK", findText(treeGui, function(text) return text == "🍀 LUCK" end) ~= nil)
-check("coût affiché 100", findText(treeGui, function(text) return text == "Coût : 🪙 100" end) ~= nil)
-check("bonus affiché +0% -> +15%", findText(treeGui, function(text) return text:find("+15%% Luck") ~= nil end) ~= nil)
+-- survol de Luck -> encart d'infos (sans bouton)
+findNode("Luck").MouseEnter:Fire()
+check("encart : titre LUCK 0/10", findText(treeGui, function(text) return text:find("🍀 LUCK", 1, true) and text:find("0/10", 1, true) end) ~= nil)
+check("encart : coût 100", findText(treeGui, function(text) return text == "Coût : 🪙 100" end) ~= nil)
+check("encart : bonus +15%", findText(treeGui, function(text) return text:find("+15%% Luck") ~= nil end) ~= nil)
+check("aucun bouton UPGRADE (achat direct)", findText(treeGui, function(text) return text:find("UPGRADE") ~= nil end) == nil)
+check("le survol n'achète rien", profile.Skills.Luck == 0 and purchaseCalls == 0)
 
-local upgrade = findText(treeGui, function(text) return text == "⬆️ UPGRADE" end)
-check("bouton UPGRADE actif", upgrade ~= nil)
-upgrade.Activated:Fire()
+-- un clic = un achat
+findNode("Luck").Activated:Fire()
+check("clic : 1 seule requête serveur", purchaseCalls == 1)
 check("serveur : Luck niveau 1", profile.Skills.Luck == 1)
 check("serveur : 100 Coins payés", profile.Coins == 900)
-check("UI : titre LUCK I", findText(treeGui, function(text) return text == "🍀 LUCK I" end) ~= nil)
 check("UI : niveau 1/10 sur l'hexagone", findText(findNode("Luck"), function(text) return text == "1/10" end) ~= nil)
+check("UI : encart mis à jour LUCK I", findText(treeGui, function(text) return text:find("LUCK I   ", 1, true) ~= nil end) ~= nil)
 check("UI : Coins 900", findText(treeGui, function(text) return text == "🪙 900" end) ~= nil)
+findNode("Luck").Activated:Fire()
+check("2e clic : Luck niveau 2 (160 payés)", profile.Skills.Luck == 2 and profile.Coins == 740)
 
 -- nœud verrouillé : Auto Roll (il faut Better Rolls 2)
 local callsBefore = purchaseCalls
 findNode("AutoRoll").Activated:Fire()
-check("Auto Roll affiche le prérequis", findText(treeGui, function(text) return text:find("Requiert : Better Rolls niv. 2") ~= nil end) ~= nil)
-findText(treeGui, function(text) return text == "🔒 UPGRADE" end).Activated:Fire()
-check("clic UPGRADE verrouillé : aucune requête serveur", purchaseCalls == callsBefore)
-check("serveur : Auto Roll toujours 0", profile.Skills.AutoRoll == 0)
+check("verrouillé : aucune requête serveur", purchaseCalls == callsBefore)
+check("verrouillé : Auto Roll toujours 0", profile.Skills.AutoRoll == 0)
+check("verrouillé : prérequis affiché", findText(treeGui, function(text) return text:find("Requiert : Better Rolls niv. 2", 1, true) ~= nil end) ~= nil)
+check("verrouillé : message flottant", findText(treeGui, function(text) return text:find("Prérequis manquant", 1, true) ~= nil end) ~= nil)
 
--- débloquer Auto Roll en achetant Better Rolls 2 fois
+-- débloquer Auto Roll en cliquant 2 fois sur Better Rolls
 findNode("BetterRolls").Activated:Fire()
-findText(treeGui, function(text) return text == "⬆️ UPGRADE" end).Activated:Fire()
-findText(treeGui, function(text) return text == "⬆️ UPGRADE" end).Activated:Fire()
+findNode("BetterRolls").Activated:Fire()
 check("serveur : Better Rolls 2", profile.Skills.BetterRolls == 2)
 findNode("AutoRoll").Activated:Fire()
-check("Auto Roll maintenant achetable", findText(treeGui, function(text) return text == "⬆️ UPGRADE" end) ~= nil)
+check("Auto Roll acheté au clic", profile.Skills.AutoRoll == 1)
 
 -- pas assez de Coins
 profile.Coins = 10
 dataSync.OnClientEvent:Fire(snapshot())
-findNode("CoreHP").Activated:Fire()
 callsBefore = purchaseCalls
-findText(treeGui, function(text) return text == "🔒 UPGRADE" end).Activated:Fire()
+findNode("CoreHP").Activated:Fire()
 check("pas assez de Coins : aucune requête", purchaseCalls == callsBefore)
-check("message 'Pas assez de Coins'", findText(treeGui, function(text) return text:find("Pas assez de Coins") ~= nil end) ~= nil)
+check("message 'Pas assez de Coins'", findText(treeGui, function(text) return text:find("Pas assez de Coins", 1, true) ~= nil end) ~= nil)
 
 -- bientôt disponible
 profile.Coins = 100000
-profile.Skills.AutoRoll = 1
 dataSync.OnClientEvent:Fire(snapshot())
+callsBefore = purchaseCalls
 findNode("OfflineRolls").Activated:Fire()
-check("Offline Rolls : 'Bientôt disponible'", findText(treeGui, function(text) return text:find("Bientôt disponible") ~= nil end) ~= nil)
+check("Offline Rolls : aucune requête", purchaseCalls == callsBefore)
+check("Offline Rolls : 'Bientôt disponible'", findText(treeGui, function(text) return text:find("Bientôt disponible", 1, true) ~= nil end) ~= nil)
 check("hexagone Offline Rolls marqué BIENTÔT", findText(findNode("OfflineRolls"), function(text) return text == "BIENTÔT" end) ~= nil)
 
 -- niveau max
-findNode("QuickReveal").Activated:Fire()
-check("Quick Reveal verrouillé sans Roll Speed 3", findText(treeGui, function(text) return text:find("Roll Speed niv. 3") ~= nil end) ~= nil)
 profile.Skills.RollSpeed = 3
-profile.Skills.QuickReveal = 3
+profile.Skills.QuickReveal = 2
 dataSync.OnClientEvent:Fire(snapshot())
 findNode("QuickReveal").Activated:Fire()
-check("niveau max : MAX LEVEL affiché", findText(treeGui, function(text) return text == "⭐ MAX LEVEL" end) ~= nil)
-check("niveau max : badge MAX sur l'hexagone", (function()
+check("dernier niveau acheté au clic", profile.Skills.QuickReveal == 3)
+callsBefore = purchaseCalls
+findNode("QuickReveal").Activated:Fire()
+check("au max : aucune requête", purchaseCalls == callsBefore)
+check("au max : MAX LEVEL affiché", findText(treeGui, function(text) return text == "⭐ MAX LEVEL" end) ~= nil)
+check("au max : badge MAX sur l'hexagone", (function()
 	for _, object in findNode("QuickReveal"):GetDescendants() do
 		if object.Text == "MAX" and object.Visible then return true end
 	end
 	return false
 end)())
+
+-- sortie du survol : l'encart disparaît
+findNode("QuickReveal").MouseLeave:Fire()
+check("encart caché après la sortie du survol", findText(treeGui, function(text) return text == "⭐ MAX LEVEL" end).Parent.Visible == false)
 
 -- fermeture
 findText(treeGui, function(text) return text == "✕" end).Activated:Fire()
