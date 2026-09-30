@@ -55,6 +55,58 @@ local deleteHighlight = create("Highlight", {
 	Parent = camera,
 })
 
+---------------------------------------------------------------- portée des armes
+
+local RANGE_COLOR = Color3.fromRGB(80, 255, 120)
+local MIN_RANGE_COLOR = Color3.fromRGB(255, 80, 80)
+local cellSpacing = if #grid.Xs > 1 then grid.Xs[2] - grid.Xs[1] else grid.CellSize
+
+-- Disque plat au sol (cylindre couché)
+local function makeDisc(color)
+	return create("Part", {
+		Anchored = true,
+		CanCollide = false,
+		CanQuery = false,
+		CanTouch = false,
+		CastShadow = false,
+		Shape = Enum.PartType.Cylinder,
+		Material = Enum.Material.Neon,
+		Color = color,
+		Transparency = 0.75,
+		Size = Vector3.new(0.1, 1, 1),
+	})
+end
+
+local rangeDisc = makeDisc(RANGE_COLOR)
+local minRangeDisc = makeDisc(MIN_RANGE_COLOR)
+
+local function placeDisc(disc, radius, x, z, lift)
+	disc.Size = Vector3.new(0.1, radius * 2, radius * 2)
+	disc.CFrame = CFrame.new(grid.Xs[x], grid.TopY + lift, grid.Zs[z]) * CFrame.Angles(0, 0, math.rad(90))
+	disc.Parent = camera
+end
+
+local function hideRange()
+	rangeDisc.Parent = nil
+	minRangeDisc.Parent = nil
+end
+
+-- Portée en vert (en cases, depuis le centre de la case de l'arme), zone morte du mortier en rouge
+local function showRange(itemId, x, z)
+	local item = itemId and Items.ById[itemId]
+	local range = item and item.Stats.Range
+	if not range or not x or not z then
+		hideRange()
+		return
+	end
+	placeDisc(rangeDisc, range * cellSpacing, x, z, 0.1)
+	if item.Stats.MinRange then
+		placeDisc(minRangeDisc, item.Stats.MinRange * cellSpacing, x, z, 0.12)
+	else
+		minRangeDisc.Parent = nil
+	end
+end
+
 ---------------------------------------------------------------- UI
 
 local gui = create("ScreenGui", {
@@ -203,6 +255,7 @@ function selectItem(itemId)
 	state.Target = nil
 	state.LastCell = nil
 	destroyGhost()
+	hideRange()
 	if itemId then
 		local ghost = ItemVisuals.Create(itemId, grid.CellSize)
 		ItemVisuals.MakeGhost(ghost)
@@ -291,6 +344,7 @@ local function updateBuild()
 	end
 	if not x then
 		ghost.Parent = nil
+		hideRange()
 		state.Target = nil
 		state.LastCell = nil
 		return
@@ -301,6 +355,7 @@ local function updateBuild()
 	ghost.Parent = workspace
 	ghostHighlight.FillColor = if ok then VALID_COLOR else INVALID_COLOR
 	state.Target = { X = x, Z = z, Valid = ok }
+	showRange(state.SelectedId, x, z)
 
 	-- PLOC : seulement quand on change de case
 	local cellKey = x .. "," .. z
