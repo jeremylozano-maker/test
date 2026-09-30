@@ -173,6 +173,20 @@ local counterLabel = UIKit.label({
 	Text = "",
 })
 
+-- 🧹 VIDER : tout remettre dans l'inventaire (2 clics pour confirmer)
+local CLEAR_CONFIRM_TIME = 3 -- secondes pour confirmer
+local clearButton = makeButton({
+	Parent = gui,
+	AnchorPoint = Vector2.new(0, 0),
+	Position = UDim2.new(0.5, 135, 0, 124),
+	Size = UDim2.new(0, 130, 0, 46),
+	BackgroundColor3 = UIKit.RED,
+	Text = "🧹 VIDER",
+	Visible = false,
+	Studs = 2,
+})
+local clearConfirmUntil = 0
+
 local buildPanel, buildBody, _, _, buildClose = UIKit.makePanel({
 	Parent = gui,
 	Title = "🔨 BUILD",
@@ -229,6 +243,7 @@ end
 -- 📦 objets posés / maximum ; rouge quand l'île est pleine (améliorable avec Build Capacity)
 local function renderCounter()
 	counterPill.Visible = state.Mode ~= nil
+	clearButton.Visible = state.Mode ~= nil and #placedFolder:GetChildren() > 0
 	local full = isAtCapacity()
 	counterLabel.Text = string.format("📦 %d / %d objets%s", #placedFolder:GetChildren(),
 		SkillTree.GetBuildCapacity(state.Skills), if full then "  • PLEIN" else "")
@@ -491,6 +506,28 @@ deleteButton.Activated:Connect(function()
 end)
 
 confirmButton.Activated:Connect(confirmAction)
+
+clearButton.Activated:Connect(function()
+	if os.clock() > clearConfirmUntil then
+		-- 1er clic : demander confirmation
+		clearConfirmUntil = os.clock() + CLEAR_CONFIRM_TIME
+		clearButton.Text = "⚠️ SÛR ?"
+		task.delay(CLEAR_CONFIRM_TIME, function()
+			if os.clock() >= clearConfirmUntil then
+				clearButton.Text = "🧹 VIDER"
+			end
+		end)
+		return
+	end
+	-- 2e clic : le serveur retire tout et rend les objets à l'inventaire
+	clearConfirmUntil = 0
+	clearButton.Text = "🧹 VIDER"
+	deleteHighlight.Adornee = nil
+	state.Target = nil
+	task.spawn(function()
+		Remotes.ClearIsland:InvokeServer()
+	end)
+end)
 
 -- le ✕ de la fenêtre BUILD quitte le mode construction
 buildClose.Activated:Connect(function()

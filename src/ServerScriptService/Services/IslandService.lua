@@ -225,6 +225,24 @@ function IslandService.Delete(player, x, z, h)
 	return true
 end
 
+-- Vide toute l'île : chaque objet posé retourne dans l'inventaire (rien n'est perdu)
+function IslandService.ClearAll(player)
+	local data = DataService.Get(player)
+	if locked or player ~= owner or not data then
+		return false
+	end
+	for _, column in columns do
+		for _, entry in column do
+			data.Inventory[entry.Id] = (data.Inventory[entry.Id] or 0) + 1
+			data.Index[entry.Id] = true
+		end
+	end
+	clearAll()
+	saveLayout(player)
+	DataService.Notify(player)
+	return true
+end
+
 function IslandService.GetGrid()
 	return grid
 end

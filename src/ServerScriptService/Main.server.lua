@@ -30,6 +30,7 @@ local rollRemote = makeRemote("RemoteFunction", "Roll")
 local dataSync = makeRemote("RemoteEvent", "DataSync")
 local placeRemote = makeRemote("RemoteFunction", "PlaceItem")
 local deleteRemote = makeRemote("RemoteFunction", "DeleteItem")
+local clearIslandRemote = makeRemote("RemoteFunction", "ClearIsland")
 local startWaveRemote = makeRemote("RemoteFunction", "StartWave")
 local stopWavesRemote = makeRemote("RemoteFunction", "StopWaves")
 local speedRemote = makeRemote("RemoteFunction", "SetWaveSpeed")
@@ -69,6 +70,10 @@ end
 
 deleteRemote.OnServerInvoke = function(player, x, z, h)
 	return IslandService.Delete(player, x, z, h)
+end
+
+clearIslandRemote.OnServerInvoke = function(player)
+	return IslandService.ClearAll(player)
 end
 
 startWaveRemote.OnServerInvoke = function(player)
