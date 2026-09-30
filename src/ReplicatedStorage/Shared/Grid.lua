@@ -6,7 +6,7 @@ local Items = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Ite
 local Grid = {}
 Grid.__index = Grid
 
-Grid.MaxHeight = 3
+Grid.MaxHeight = 3 -- hauteur par défaut (la compétence Build Height l'augmente, voir GetPlacement)
 
 local TOLERANCE = 0.5
 
@@ -123,15 +123,16 @@ function Grid:SlotBottom(x, z, h)
 end
 
 -- stackIds : ids des objets déjà sur la case, du bas vers le haut (sans le Core)
+-- maxHeight : étages autorisés pour ce joueur (SkillTree.GetMaxBuildHeight), Grid.MaxHeight par défaut
 -- Retourne (placement possible ?, étage où l'objet irait)
-function Grid:GetPlacement(itemId, x, z, stackIds)
+function Grid:GetPlacement(itemId, x, z, stackIds, maxHeight)
 	local item = Items.ById[itemId]
 	if not item or not self:IsValidCell(x, z) then
 		return false, nil
 	end
 	local rules = Items.CategoryInfo[item.Category]
 	local h = self:BaseHeight(x, z) + #stackIds + 1
-	if h > Grid.MaxHeight then
+	if h > (maxHeight or Grid.MaxHeight) then
 		return false, h
 	end
 	if rules.GroundOnly and h ~= 1 then

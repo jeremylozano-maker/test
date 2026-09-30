@@ -1,7 +1,10 @@
 -- DataService : chargement, sauvegarde et modification des données joueur (serveur uniquement)
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+
+local SkillTreeConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SkillTreeConfig"))
 
 local DataService = {}
 
@@ -15,6 +18,15 @@ local canSave = {} -- [player] = bool
 -- Déclenché à chaque modification : (player, data)
 DataService.Changed = Instance.new("BindableEvent")
 
+-- Toutes les compétences du Skill Tree commencent au niveau 0
+local function defaultSkills()
+	local skills = {}
+	for skillId in SkillTreeConfig.Skills do
+		skills[skillId] = 0
+	end
+	return skills
+end
+
 local function defaultData()
 	return {
 		Version = 1,
@@ -22,9 +34,9 @@ local function defaultData()
 		Wave = 1, -- prochaine vague à jouer
 		Inventory = {}, -- [itemId] = quantité non placée
 		Index = {}, -- [itemId] = true
-		Skills = { AutoRoll = 0, Luck = 0, RollSpeed = 0, CoreHP = 0, Sword = 0 },
+		Skills = defaultSkills(), -- [skillId] = niveau (voir SkillTreeConfig)
 		Island = {}, -- { { Id, X, Z, H }, ... }
-		Stats = { TotalRolls = 0, BestWave = 0, ZombiesKilled = 0, CoinsEarned = 0 },
+		Stats = { TotalRolls = 0, BestWave = 0, ZombiesKilled = 0, CoinsEarned = 0, RollsSinceRare = 0 },
 	}
 end
 

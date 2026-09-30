@@ -12,6 +12,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Items = require(Shared:WaitForChild("Items"))
 local Rarities = require(Shared:WaitForChild("Rarities"))
 local Grid = require(Shared:WaitForChild("Grid"))
+local SkillTree = require(Shared:WaitForChild("SkillTree"))
 local ItemVisuals = require(Shared:WaitForChild("ItemVisuals"))
 local UIKit = require(Shared:WaitForChild("UIKit"))
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -35,6 +36,7 @@ local state = {
 	SelectedId = nil,
 	Tab = "Block", -- onglet ouvert dans la fenêtre BUILD
 	Inventory = {},
+	Skills = {}, -- niveaux du Skill Tree (Build Capacity / Build Height), envoyés par le serveur
 	Ghost = nil,
 	Target = nil, -- Build : { X, Z, Valid } / Delete : { Model }
 	LastCell = nil,
@@ -153,7 +155,7 @@ local confirmButton = makeButton({
 	Studs = 3,
 })
 
-local buildPanel, buildBody, _, _, buildClose = UIKit.makePanel({
+local buildPanel, buildBody, buildTitle, _, buildClose = UIKit.makePanel({
 	Parent = gui,
 	Title = "🔨 BUILD",
 	Accent = UIKit.GREEN,
@@ -201,7 +203,13 @@ local buildList = UIKit.makeList({
 
 local selectItem -- défini plus bas
 
+-- Build Capacity : objets posés / maximum
+local function isAtCapacity()
+	return #placedFolder:GetChildren() >= SkillTree.GetBuildCapacity(state.Skills)
+end
+
 local function renderBuildPanel()
+	buildTitle.Text = string.format("🔨 BUILD   📦 %d/%d", #placedFolder:GetChildren(), SkillTree.GetBuildCapacity(state.Skills))
 	for category, button in tabButtons do
 		button.BackgroundColor3 = if category == state.Tab then UIKit.GREEN else UIKit.BUTTON_COLOR
 	end
@@ -355,7 +363,8 @@ local function updateBuild()
 		return
 	end
 
-	local ok, h = grid:GetPlacement(state.SelectedId, x, z, columnIds(x, z))
+	local ok, h = grid:GetPlacement(state.SelectedId, x, z, columnIds(x, z), SkillTree.GetMaxBuildHeight(state.Skills))
+	ok = ok and not isAtCapacity()
 	ghost:PivotTo(CFrame.new(grid:SlotBottom(x, z, h)))
 	ghost.Parent = workspace
 	ghostHighlight.FillColor = if ok then VALID_COLOR else INVALID_COLOR
@@ -494,6 +503,7 @@ end)
 
 local function applySnapshot(snapshot)
 	state.Inventory = snapshot.Inventory or {}
+	state.Skills = snapshot.Skills or {}
 	if state.SelectedId and (state.Inventory[state.SelectedId] or 0) <= 0 then
 		selectItem(nil)
 	elseif state.Mode == "Build" then
@@ -502,6 +512,15 @@ local function applySnapshot(snapshot)
 end
 
 Remotes.DataSync.OnClientEvent:Connect(applySnapshot)
+
+-- le compteur 📦 suit les objets posés / supprimés
+local function refreshIfBuilding()
+	if state.Mode == "Build" then
+		renderBuildPanel()
+	end
+end
+placedFolder.ChildAdded:Connect(refreshIfBuilding)
+placedFolder.ChildRemoved:Connect(refreshIfBuilding)
 
 task.spawn(function()
 	local snapshot = Remotes.GetSnapshot:InvokeServer()

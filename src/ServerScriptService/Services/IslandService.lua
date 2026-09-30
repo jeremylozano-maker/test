@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Items = require(Shared:WaitForChild("Items"))
 local Grid = require(Shared:WaitForChild("Grid"))
+local SkillTree = require(Shared:WaitForChild("SkillTree"))
 local ItemVisuals = require(Shared:WaitForChild("ItemVisuals"))
 local DataService = require(script.Parent:WaitForChild("DataService"))
 
@@ -124,6 +125,15 @@ local function saveLayout(player)
 	data.Island = layout
 end
 
+-- Nombre d'objets posés sur l'île (pour la compétence Build Capacity)
+local function countEntries()
+	local count = 0
+	for _, column in columns do
+		count += #column
+	end
+	return count
+end
+
 local function loadLayout(player, data)
 	local layout = table.clone(data.Island)
 	table.sort(layout, function(a, b)
@@ -132,7 +142,7 @@ local function loadLayout(player, data)
 	local refunded = false
 	for _, saved in layout do
 		local column = grid:IsValidCell(saved.X, saved.Z) and getColumn(saved.X, saved.Z)
-		local ok = column and grid:GetPlacement(saved.Id, saved.X, saved.Z, stackIds(column))
+		local ok = column and grid:GetPlacement(saved.Id, saved.X, saved.Z, stackIds(column), SkillTree.GetMaxBuildHeight(data.Skills))
 		if ok then
 			table.insert(column, spawnEntry(saved.Id, saved.X, saved.Z, grid:BaseHeight(saved.X, saved.Z) + #column + 1))
 		elseif Items.ById[saved.Id] then
@@ -180,11 +190,17 @@ function IslandService.Place(player, itemId, x, z)
 	if locked or player ~= owner or typeof(itemId) ~= "string" or not isInteger(x) or not isInteger(z) then
 		return false
 	end
+	local data = DataService.Get(player)
 	local column = grid:IsValidCell(x, z) and getColumn(x, z)
-	if not column then
+	if not column or not data then
 		return false
 	end
-	local ok, h = grid:GetPlacement(itemId, x, z, stackIds(column))
+	-- Build Capacity : limite du nombre d'objets posés
+	if countEntries() >= SkillTree.GetBuildCapacity(data.Skills) then
+		return false
+	end
+	-- Build Height : nombre d'étages autorisés
+	local ok, h = grid:GetPlacement(itemId, x, z, stackIds(column), SkillTree.GetMaxBuildHeight(data.Skills))
 	if not ok or not DataService.RemoveItem(player, itemId, 1) then
 		return false
 	end

@@ -298,6 +298,24 @@ local newBadge = create("TextLabel", {
 	Visible = false,
 }, { corner(10), stroke(3), UIKit.shine(), UIKit.padding(4) })
 
+-- Better Rolls : pastille "objet bonus" sous la fenêtre de révélation
+local bonusChip = create("Frame", {
+	Parent = reveal,
+	AnchorPoint = Vector2.new(0.5, 0),
+	Position = UDim2.new(0.5, 0, 1, 10),
+	Size = UDim2.new(0.8, 0, 0, 34),
+	BackgroundColor3 = UIKit.ORANGE,
+	BorderSizePixel = 0,
+	Visible = false,
+}, { corner(10), stroke(3), UIKit.shine() })
+
+local bonusLabel = UIKit.label({
+	Parent = bonusChip,
+	Position = UDim2.new(0, 8, 0, 4),
+	Size = UDim2.new(1, -16, 1, -8),
+	Text = "",
+})
+
 local function playFlash(color, strength)
 	flash.BackgroundColor3 = color
 	flash.BackgroundTransparency = 1 - strength
@@ -334,8 +352,12 @@ local function playReveal(result)
 	state.RevealToken += 1
 	local token = state.RevealToken
 
+	-- Quick Reveal : animation plus courte
+	local speed = SkillTree.GetRevealDurationMultiplier(state.Snapshot and state.Snapshot.Skills or {})
+
 	reveal.Visible = true
 	newBadge.Visible = false
+	bonusChip.Visible = false
 	rarityLabel.Text = "🎲 Rolling..."
 	rarityChip.BackgroundColor3 = UIKit.BUTTON_COLOR
 
@@ -346,13 +368,19 @@ local function playReveal(result)
 		nameLabel.TextColor3 = Rarities.Info[fake.Rarity].Color
 		revealStroke.Color = Rarities.Info[fake.Rarity].Color
 		local progress = tick / info.RevealTicks
-		task.wait(0.03 + (info.RevealMaxDelay - 0.03) * progress * progress)
+		task.wait((0.03 + (info.RevealMaxDelay - 0.03) * progress * progress) * speed)
 	end
 
 	nameLabel.Text = item.Icon .. " " .. item.Name
 	rarityLabel.Text = string.upper(item.Rarity)
 	setRevealColor(info.Color)
 	newBadge.Visible = result.IsNew
+	local bonusItem = result.BonusItemId and Items.ById[result.BonusItemId]
+	if bonusItem then
+		bonusLabel.Text = string.format("🎁 BONUS : %s %s", bonusItem.Icon, bonusItem.Name)
+		bonusChip.BackgroundColor3 = UIKit.darken(Rarities.Info[bonusItem.Rarity].Color, 0.25)
+		bonusChip.Visible = true
+	end
 
 	revealScale.Scale = 1 + 0.08 * info.Rank
 	TweenService:Create(revealScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
@@ -369,7 +397,7 @@ local function playReveal(result)
 		setRevealColor(info.Color)
 	end
 
-	task.wait(0.4 + 0.2 * info.Rank)
+	task.wait((0.4 + 0.2 * info.Rank) * speed)
 	state.Revealing = false
 	if state.Pending then
 		applySnapshot(state.Pending)

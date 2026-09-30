@@ -30,13 +30,24 @@ Tier 1→5 d'une famille = Common → Legendary. Mythic : Thunder Tesla, War Mor
 Dans une rareté, poids : Block 6, Trap 3, Weapon 1 (les blocs sortent plus souvent).
 
 ## Skill Tree
-| Compétence | Max | Coût niv. N→N+1 | Effet |
-|---|---|---|---|
-| Auto Roll | 1 | 300 | rolls automatiques |
-| Luck | 10 | 100 × 1.6^N | +0.15 Luck / niveau |
-| Roll Speed | 10 | 80 × 1.5^N | cooldown 2 s × 0.92^N (min 0.5 s) |
-| Core HP | 10 | 120 × 1.55^N | +20 % vie du Core / niveau |
-| Sword | 20 | 50 × 1.35^N | +25 % dégâts de l'épée / niveau |
+Toutes les valeurs sont dans `ReplicatedStorage/Shared/SkillTreeConfig` (coûts, bonus, prérequis, positions, sons).
+Niveaux sauvegardés dans `data.Skills[skillId]` (DataService). Achat validé par `SkillService.Purchase` (serveur).
+
+| Branche | Compétence | Max | Prérequis | Effet réel |
+|---|---|---|---|---|
+| 🎲 Roll | Better Rolls | 10 | — | +3 %/niv de chance d'un 2e objet par roll (RollService) |
+| 🎲 Roll | Auto Roll | 1 | Better Rolls 2 | bouton AUTO du Roll |
+| 🎲 Roll | Roll Mastery | 5 | Better Rolls 3 | Rare+ garanti tous les 60 − 5×niv rolls |
+| 🎲 Roll | Offline Rolls | 5 | Auto Roll 1 | 🚧 BIENTÔT (non achetable, niveau prêt à être sauvegardé) |
+| 🍀 Luck | Luck | 10 | — | +0.15 Luck/niv (poids des raretés dans RollMath) |
+| 🍀 Luck | Mythic Hunter | 5 | Luck 5 | +20 %/niv sur Legendary et Mythic |
+| ⚡ Roll Speed | Roll Speed | 10 | — | cooldown serveur 2 s × 0.92^niv (min 0.5 s) |
+| ⚡ Roll Speed | Quick Reveal | 3 | Roll Speed 3 | animation de roll −20 %/niv (visuel) |
+| 🏝️ Island | Core HP | 10 | — | +20 %/niv de vie du Core (WaveService) |
+| 🏝️ Island | Build Capacity | 10 | Core HP 1 | 60 objets posés + 10/niv (IslandService) |
+| 🏝️ Island | Build Height | 2 | Build Capacity 3 | 3 étages + 1/niv (Grid:GetPlacement) |
+| 🏝️ Island | Island Size | 3 | Core HP 5 | 🚧 BIENTÔT (demande d'agrandir le Damier) |
+| ⚔️ (hors arbre) | Sword | 20 | — | dégâts de l'épée 15 × 1.25^niv (bouton SWORD) |
 
 ## Vagues
 - Bouton START : le joueur lance la vague. Pas de construction pendant une vague. Vitesse x1 / x2 (x3 Robux plus tard).
