@@ -144,9 +144,10 @@ function WaveService.Stop(player)
 	spawnQueue = {}
 	setIntermission(0)
 	publishRun()
-	setInfo("StopCount", (waveInfo:GetAttribute("StopCount") or 0) + 1)
 	IslandService.RestoreLayout()
 	setPhase("Build")
+	-- après le changement de phase, sinon l'interface referme le résumé tout de suite
+	setInfo("StopCount", (waveInfo:GetAttribute("StopCount") or 0) + 1)
 	return true
 end
 
