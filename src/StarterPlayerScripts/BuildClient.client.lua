@@ -35,6 +35,7 @@ local state = {
 	Mode = nil, -- "Build" | "Delete" | nil
 	SelectedId = nil,
 	Tab = "Block", -- onglet ouvert dans la fenêtre BUILD
+	SortIndex = 1, -- tri choisi dans la fenêtre BUILD (voir SORTS)
 	Inventory = {},
 	Skills = {}, -- niveaux du Skill Tree (Build Capacity / Build Height), envoyés par le serveur
 	Ghost = nil,
@@ -227,11 +228,58 @@ for order, tab in TABS do
 	})
 end
 
-local buildList = UIKit.makeList({
+-- Tri de la liste : chaque clic sur le bouton passe au tri suivant (du plus grand au plus petit)
+-- Stat = statistique affichée sur chaque ligne pendant ce tri
+local SORTS = {
+	{ Label = "⭐ Rareté", Value = function(item) return Rarities.Info[item.Rarity].Rank end },
+	{ Label = "❤️ Points de vie", Stat = "HP", Icon = "❤️" },
+	{ Label = "💥 Dégâts", Stat = "Damage", Icon = "💥" },
+	{ Label = "🎯 Portée", Stat = "Range", Icon = "🎯" },
+	{ Label = "📦 Quantité", Value = function(item) return state.Inventory[item.Id] or 0 end },
+}
+
+local sortButton = makeButton({
 	Parent = buildBody,
 	Position = UDim2.new(0, 0, 0, 48),
-	Size = UDim2.new(1, 0, 1, -48),
+	Size = UDim2.new(1, 0, 0, 34),
+	Text = "",
 })
+
+local buildList = UIKit.makeList({
+	Parent = buildBody,
+	Position = UDim2.new(0, 0, 0, 90),
+	Size = UDim2.new(1, 0, 1, -90),
+})
+
+local function sortValue(sort, item)
+	if sort.Value then
+		return sort.Value(item)
+	end
+	return item.Stats[sort.Stat] or 0
+end
+
+-- Objets de l'onglet ouvert que le joueur possède, dans l'ordre du tri choisi
+local function sortedTabItems()
+	local sort = SORTS[state.SortIndex]
+	local list = {}
+	for _, item in Items.ByCategory[state.Tab] do
+		if (state.Inventory[item.Id] or 0) > 0 then
+			table.insert(list, item)
+		end
+	end
+	table.sort(list, function(a, b)
+		local valueA, valueB = sortValue(sort, a), sortValue(sort, b)
+		if valueA ~= valueB then
+			return valueA > valueB
+		end
+		local rankA, rankB = Rarities.Info[a.Rarity].Rank, Rarities.Info[b.Rarity].Rank
+		if rankA ~= rankB then
+			return rankA > rankB
+		end
+		return a.Order < b.Order
+	end)
+	return list
+end
 
 local selectItem -- défini plus bas
 
@@ -254,26 +302,26 @@ local function renderBuildPanel()
 	for category, button in tabButtons do
 		button.BackgroundColor3 = if category == state.Tab then UIKit.GREEN else UIKit.BUTTON_COLOR
 	end
+	local sort = SORTS[state.SortIndex]
+	sortButton.Text = "↕️ Tri : " .. sort.Label
 	UIKit.clearList(buildList)
 	local order = 0
-	for _, item in Items.ByCategory[state.Tab] do
-		local count = state.Inventory[item.Id] or 0
-		if count > 0 then
-			order += 1
-			local isSelected = item.Id == state.SelectedId
-			local row = UIKit.itemRow({
-				Parent = buildList,
-				LayoutOrder = order,
-				Text = item.Icon .. " " .. item.Name,
-				Color = Rarities.Info[item.Rarity].Color,
-				Badge = "×" .. count,
-				Selected = isSelected,
-				Clickable = true,
-			})
-			row.Activated:Connect(function()
-				selectItem(if isSelected then nil else item.Id)
-			end)
-		end
+	for _, item in sortedTabItems() do
+		order += 1
+		local isSelected = item.Id == state.SelectedId
+		local statValue = sort.Stat and item.Stats[sort.Stat]
+		local row = UIKit.itemRow({
+			Parent = buildList,
+			LayoutOrder = order,
+			Text = item.Icon .. " " .. item.Name .. (if statValue then string.format("   %s %g", sort.Icon, statValue) else ""),
+			Color = Rarities.Info[item.Rarity].Color,
+			Badge = "×" .. state.Inventory[item.Id],
+			Selected = isSelected,
+			Clickable = true,
+		})
+		row.Activated:Connect(function()
+			selectItem(if isSelected then nil else item.Id)
+		end)
 	end
 	if order == 0 then
 		UIKit.label({
@@ -285,6 +333,11 @@ local function renderBuildPanel()
 		})
 	end
 end
+
+sortButton.Activated:Connect(function()
+	state.SortIndex = state.SortIndex % #SORTS + 1
+	renderBuildPanel()
+end)
 
 for category, button in tabButtons do
 	button.Activated:Connect(function()
