@@ -8,7 +8,7 @@ local SkillTree = require(Shared:WaitForChild("SkillTree"))
 local UIKit = require(Shared:WaitForChild("UIKit"))
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 
-local UPGRADE_COLOR = Color3.fromRGB(70, 110, 200)
+local UPGRADE_COLOR = UIKit.BLUE
 
 local gui = UIKit.create("ScreenGui", {
 	Name = "SwordUI",
@@ -20,10 +20,11 @@ local gui = UIKit.create("ScreenGui", {
 local upgradeButton = UIKit.makeButton({
 	Parent = gui,
 	AnchorPoint = Vector2.new(0, 0.5),
-	Position = UDim2.new(0, 12, 0.5, 106),
-	Size = UDim2.new(0, 145, 0, 64),
+	Position = UDim2.new(0, 14, 0.5, 108),
+	Size = UDim2.new(0, 150, 0, 66),
 	BackgroundColor3 = UPGRADE_COLOR,
 	Text = "⚔️ SWORD",
+	Studs = 3,
 })
 
 local snapshot = nil

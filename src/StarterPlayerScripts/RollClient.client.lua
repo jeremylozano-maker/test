@@ -1,4 +1,4 @@
--- RollClient : UI du Roll, de l'Inventaire et de l'Index (affichage uniquement, le serveur décide)
+-- RollClient : UI du Roll, des Coins, de l'Inventaire et de l'Index (affichage uniquement, le serveur décide)
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -8,16 +8,12 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Items = require(Shared:WaitForChild("Items"))
 local Rarities = require(Shared:WaitForChild("Rarities"))
 local SkillTree = require(Shared:WaitForChild("SkillTree"))
+local UIKit = require(Shared:WaitForChild("UIKit"))
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 
-local WHITE = Color3.new(1, 1, 1)
-local GREY = Color3.fromRGB(110, 110, 120)
-local HEADER_COLOR = Color3.fromRGB(255, 220, 120)
-local PANEL_COLOR = Color3.fromRGB(28, 32, 46)
-local BUTTON_COLOR = Color3.fromRGB(45, 50, 70)
-local DARK = Color3.fromRGB(15, 15, 25)
-local TITLE_FONT = Enum.Font.FredokaOne
-local TEXT_FONT = Enum.Font.GothamBold
+local create, corner, stroke, makeButton = UIKit.create, UIKit.corner, UIKit.stroke, UIKit.makeButton
+
+local RARITY_SHORT = { Common = "COM", Uncommon = "UNC", Rare = "RARE", Epic = "EPIC", Legendary = "LEG", Mythic = "MYTH" }
 
 local state = {
 	Snapshot = nil,
@@ -27,52 +23,6 @@ local state = {
 	AutoRoll = false,
 	RevealToken = 0,
 }
-
----------------------------------------------------------------- helpers UI
-
-local function create(className, props, children)
-	local instance = Instance.new(className)
-	for key, value in props do
-		if key ~= "Parent" then
-			instance[key] = value
-		end
-	end
-	for _, child in children or {} do
-		child.Parent = instance
-	end
-	instance.Parent = props.Parent
-	return instance
-end
-
-local function corner(radius)
-	return create("UICorner", { CornerRadius = UDim.new(0, radius or 12) })
-end
-
-local function stroke(thickness, color)
-	return create("UIStroke", {
-		Thickness = thickness or 3,
-		Color = color or DARK,
-		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-	})
-end
-
-local function makeButton(props)
-	props.BackgroundColor3 = props.BackgroundColor3 or BUTTON_COLOR
-	props.TextColor3 = WHITE
-	props.Font = TITLE_FONT
-	props.TextScaled = true
-	props.AutoButtonColor = true
-	return create("TextButton", props, {
-		corner(14),
-		stroke(3),
-		create("UIPadding", {
-			PaddingTop = UDim.new(0, 6),
-			PaddingBottom = UDim.new(0, 6),
-			PaddingLeft = UDim.new(0, 8),
-			PaddingRight = UDim.new(0, 8),
-		}),
-	})
-end
 
 ---------------------------------------------------------------- écran
 
@@ -94,196 +44,164 @@ local flashGui = create("ScreenGui", {
 local flash = create("Frame", {
 	Parent = flashGui,
 	Size = UDim2.fromScale(1, 1),
-	BackgroundColor3 = WHITE,
+	BackgroundColor3 = UIKit.WHITE,
 	BackgroundTransparency = 1,
 	Active = false,
 })
 
-local coinsLabel = create("TextLabel", {
+-- Coins (en haut au centre)
+local coinsFrame = create("Frame", {
 	Parent = gui,
 	AnchorPoint = Vector2.new(0.5, 0),
-	Position = UDim2.new(0.5, 0, 0, 10),
-	Size = UDim2.new(0, 190, 0, 44),
-	BackgroundColor3 = PANEL_COLOR,
-	Text = "🪙 0",
-	TextColor3 = HEADER_COLOR,
-	Font = TITLE_FONT,
-	TextScaled = true,
-}, { corner(12), stroke(3) })
+	Position = UDim2.new(0.5, 0, 0, 12),
+	Size = UDim2.new(0, 200, 0, 46),
+	BackgroundColor3 = UIKit.PANEL_COLOR,
+	BorderSizePixel = 0,
+}, { corner(14), stroke(3), UIKit.shine() })
+UIKit.addStuds(coinsFrame, 3)
 
+local coinsLabel = UIKit.label({
+	Parent = coinsFrame,
+	Position = UDim2.new(0, 10, 0, 6),
+	Size = UDim2.new(1, -20, 1, -12),
+	Text = "🪙 0",
+	TextColor3 = UIKit.YELLOW,
+})
+
+-- Bouton ROLL (en bas au centre)
 local rollButton = makeButton({
 	Parent = gui,
 	Name = "RollButton",
 	AnchorPoint = Vector2.new(0.5, 1),
-	Position = UDim2.new(0.5, 0, 1, -20),
-	Size = UDim2.new(0, 220, 0, 70),
-	BackgroundColor3 = Color3.fromRGB(60, 170, 90),
+	Position = UDim2.new(0.5, 0, 1, -22),
+	Size = UDim2.new(0, 230, 0, 74),
+	BackgroundColor3 = UIKit.GREEN,
 	Text = "🎲 ROLL",
+	Studs = 4,
 })
 
-local cooldownBack = create("Frame", {
+local _, cooldownFill = UIKit.makeBar({
 	Parent = rollButton,
 	AnchorPoint = Vector2.new(0.5, 1),
 	Position = UDim2.new(0.5, 0, 1, 2),
-	Size = UDim2.new(1, 0, 0, 6),
-	BackgroundColor3 = DARK,
-	BorderSizePixel = 0,
-}, { corner(3) })
-
-local cooldownFill = create("Frame", {
-	Parent = cooldownBack,
-	Size = UDim2.fromScale(1, 1),
-	BackgroundColor3 = WHITE,
-	BorderSizePixel = 0,
-}, { corner(3) })
+	Size = UDim2.new(1, 0, 0, 8),
+}, UIKit.WHITE)
 
 local autoButton = makeButton({
 	Parent = gui,
 	AnchorPoint = Vector2.new(0, 1),
-	Position = UDim2.new(0.5, 125, 1, -20),
-	Size = UDim2.new(0, 110, 0, 50),
+	Position = UDim2.new(0.5, 130, 1, -22),
+	Size = UDim2.new(0, 120, 0, 54),
 	Text = "AUTO: OFF",
 	Visible = false,
+	Studs = 2,
 })
 
+-- Boutons à droite
 local inventoryButton = makeButton({
 	Parent = gui,
 	AnchorPoint = Vector2.new(1, 0.5),
-	Position = UDim2.new(1, -12, 0.5, -34),
-	Size = UDim2.new(0, 145, 0, 56),
+	Position = UDim2.new(1, -14, 0.5, -34),
+	Size = UDim2.new(0, 150, 0, 56),
+	BackgroundColor3 = UIKit.BLUE,
 	Text = "🎒 Inventory",
+	Studs = 3,
 })
 
 local indexButton = makeButton({
 	Parent = gui,
 	AnchorPoint = Vector2.new(1, 0.5),
-	Position = UDim2.new(1, -12, 0.5, 34),
-	Size = UDim2.new(0, 145, 0, 56),
+	Position = UDim2.new(1, -14, 0.5, 34),
+	Size = UDim2.new(0, 150, 0, 56),
+	BackgroundColor3 = UIKit.PURPLE,
 	Text = "📖 Index",
+	Studs = 3,
 })
 
----------------------------------------------------------------- panneaux (Inventaire / Index)
+---------------------------------------------------------------- fenêtres Inventaire / Index
 
-local function makePanel(title)
-	local panel = create("Frame", {
+local function makeSidePanel(title, accent)
+	local panel, body, titleLabel = UIKit.makePanel({
 		Parent = gui,
-		Name = title,
-		Visible = false,
+		Title = title,
+		Accent = accent,
 		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -170, 0.5, 0),
+		Position = UDim2.new(1, -178, 0.5, 0),
 		Size = UDim2.fromScale(0.32, 0.72),
-		BackgroundColor3 = PANEL_COLOR,
-	}, {
-		corner(16),
-		stroke(3),
-		create("UISizeConstraint", { MinSize = Vector2.new(240, 220), MaxSize = Vector2.new(420, 560) }),
+		MinSize = Vector2.new(260, 240),
+		MaxSize = Vector2.new(430, 580),
 	})
-	local titleLabel = create("TextLabel", {
-		Parent = panel,
-		Position = UDim2.new(0, 14, 0, 8),
-		Size = UDim2.new(1, -64, 0, 38),
-		BackgroundTransparency = 1,
-		Text = title,
-		TextColor3 = WHITE,
-		Font = TITLE_FONT,
-		TextScaled = true,
-		TextXAlignment = Enum.TextXAlignment.Left,
-	})
-	local closeButton = makeButton({
-		Parent = panel,
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -8, 0, 8),
-		Size = UDim2.new(0, 38, 0, 38),
-		BackgroundColor3 = Color3.fromRGB(200, 60, 60),
-		Text = "X",
-	})
-	closeButton.Activated:Connect(function()
-		panel.Visible = false
-	end)
-	local list = create("ScrollingFrame", {
-		Parent = panel,
-		Position = UDim2.new(0, 10, 0, 56),
-		Size = UDim2.new(1, -20, 1, -66),
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		ScrollBarThickness = 6,
-		CanvasSize = UDim2.new(),
-		AutomaticCanvasSize = Enum.AutomaticSize.Y,
-	}, {
-		create("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }),
-	})
-	return panel, titleLabel, list
+	return panel, body, titleLabel
 end
 
-local function clearList(list)
-	for _, child in list:GetChildren() do
-		if child:IsA("GuiObject") then
-			child:Destroy()
-		end
-	end
-end
+local inventoryPanel, inventoryBody = makeSidePanel("🎒 INVENTORY", UIKit.BLUE)
+local inventoryList = UIKit.makeList({ Parent = inventoryBody, Size = UDim2.fromScale(1, 1) })
 
-local function addRow(list, order, text, color, isHeader)
-	create("TextLabel", {
-		Parent = list,
-		LayoutOrder = order,
-		Size = UDim2.new(1, -8, 0, if isHeader then 30 else 26),
-		BackgroundTransparency = 1,
-		Text = text,
-		TextColor3 = color,
-		Font = if isHeader then TITLE_FONT else TEXT_FONT,
-		TextScaled = true,
-		TextXAlignment = Enum.TextXAlignment.Left,
-	})
-end
-
-local inventoryPanel, _, inventoryList = makePanel("🎒 INVENTORY")
-local indexPanel, indexTitle, indexList = makePanel("📖 INDEX")
+local indexPanel, indexBody, indexTitle = makeSidePanel("📖 INDEX", UIKit.PURPLE)
+local _, indexFill = UIKit.makeBar({ Parent = indexBody, Size = UDim2.new(1, 0, 0, 14) }, UIKit.PURPLE)
+local indexList = UIKit.makeList({ Parent = indexBody, Position = UDim2.new(0, 0, 0, 22), Size = UDim2.new(1, 0, 1, -22) })
 
 local function renderInventory()
-	clearList(inventoryList)
+	UIKit.clearList(inventoryList)
 	local inventory = state.Snapshot and state.Snapshot.Inventory or {}
 	local order = 0
 	for _, category in Items.Categories do
 		order += 1
-		addRow(inventoryList, order, Items.CategoryInfo[category].Label, HEADER_COLOR, true)
+		UIKit.sectionHeader(inventoryList, order, Items.CategoryInfo[category].Label)
 		local any = false
 		for _, item in Items.ByCategory[category] do
 			local count = inventory[item.Id] or 0
 			if count > 0 then
 				any = true
 				order += 1
-				local text = string.format("%s %s ×%d", item.Icon, item.Name, count)
-				addRow(inventoryList, order, text, Rarities.Info[item.Rarity].Color)
+				UIKit.itemRow({
+					Parent = inventoryList,
+					LayoutOrder = order,
+					Text = item.Icon .. " " .. item.Name,
+					Color = Rarities.Info[item.Rarity].Color,
+					Badge = "×" .. count,
+				})
 			end
 		end
 		if not any then
 			order += 1
-			addRow(inventoryList, order, "  —", GREY)
+			UIKit.label({
+				Parent = inventoryList,
+				LayoutOrder = order,
+				Size = UDim2.new(1, -10, 0, 22),
+				Text = "—",
+				TextColor3 = UIKit.GREY,
+			})
 		end
 	end
 end
 
 local function renderIndex()
-	clearList(indexList)
+	UIKit.clearList(indexList)
 	local index = state.Snapshot and state.Snapshot.Index or {}
 	local found = 0
 	local order = 0
 	for _, category in Items.Categories do
 		order += 1
-		addRow(indexList, order, Items.CategoryInfo[category].Label, HEADER_COLOR, true)
+		UIKit.sectionHeader(indexList, order, Items.CategoryInfo[category].Label)
 		for _, item in Items.ByCategory[category] do
 			order += 1
-			if index[item.Id] then
+			local discovered = index[item.Id] == true
+			if discovered then
 				found += 1
-				local text = string.format("✓ %s %s  (%s)", item.Icon, item.Name, item.Rarity)
-				addRow(indexList, order, text, Rarities.Info[item.Rarity].Color)
-			else
-				addRow(indexList, order, "? " .. item.Name, GREY)
 			end
+			UIKit.itemRow({
+				Parent = indexList,
+				LayoutOrder = order,
+				Text = if discovered then item.Icon .. " " .. item.Name else "❔ " .. item.Name,
+				Color = if discovered then Rarities.Info[item.Rarity].Color else UIKit.GREY,
+				Badge = if discovered then RARITY_SHORT[item.Rarity] else "???",
+				Height = 36,
+			})
 		end
 	end
 	indexTitle.Text = string.format("📖 INDEX  %d/%d", found, #Items.List)
+	indexFill.Size = UDim2.fromScale(found / #Items.List, 1)
 end
 
 local function applySnapshot(snapshot)
@@ -326,51 +244,59 @@ local reveal = create("Frame", {
 	Visible = false,
 	AnchorPoint = Vector2.new(0.5, 0.5),
 	Position = REVEAL_POSITION,
-	Size = UDim2.fromScale(0.5, 0.22),
-	BackgroundColor3 = PANEL_COLOR,
+	Size = UDim2.fromScale(0.5, 0.24),
+	BackgroundColor3 = UIKit.PANEL_COLOR,
+	BorderSizePixel = 0,
 }, {
-	corner(18),
-	create("UISizeConstraint", { MinSize = Vector2.new(260, 110), MaxSize = Vector2.new(480, 170) }),
+	corner(20),
+	UIKit.shine(Color3.fromRGB(160, 160, 180)),
+	create("UISizeConstraint", { MinSize = Vector2.new(280, 130), MaxSize = Vector2.new(500, 190) }),
 })
-local revealStroke = stroke(5, WHITE)
+UIKit.addStuds(reveal, 6)
+local revealStroke = stroke(6, UIKit.WHITE)
 revealStroke.Parent = reveal
 local revealScale = create("UIScale", { Parent = reveal, Scale = 1 })
 
-local rarityLabel = create("TextLabel", {
+-- Pastille de rareté en haut
+local rarityChip = create("Frame", {
 	Parent = reveal,
-	Position = UDim2.fromScale(0.05, 0.06),
-	Size = UDim2.fromScale(0.9, 0.28),
-	BackgroundTransparency = 1,
+	AnchorPoint = Vector2.new(0.5, 0),
+	Position = UDim2.new(0.5, 0, 0, 12),
+	Size = UDim2.new(0.55, 0, 0.26, 0),
+	BackgroundColor3 = UIKit.BUTTON_COLOR,
+	BorderSizePixel = 0,
+}, { corner(10), stroke(3), UIKit.shine() })
+
+local rarityLabel = UIKit.label({
+	Parent = rarityChip,
+	Position = UDim2.new(0, 8, 0, 3),
+	Size = UDim2.new(1, -16, 1, -6),
 	Text = "",
-	TextColor3 = WHITE,
-	Font = TITLE_FONT,
-	TextScaled = true,
 })
 
-local nameLabel = create("TextLabel", {
+local nameLabel = UIKit.label({
 	Parent = reveal,
-	Position = UDim2.fromScale(0.05, 0.38),
-	Size = UDim2.fromScale(0.9, 0.5),
-	BackgroundTransparency = 1,
+	Position = UDim2.fromScale(0.05, 0.42),
+	Size = UDim2.fromScale(0.9, 0.46),
 	Text = "",
-	TextColor3 = WHITE,
-	Font = TITLE_FONT,
-	TextScaled = true,
-}, { create("UIStroke", { Thickness = 2, Color = DARK }) })
+	TextStrokeTransparency = 0,
+})
 
 local newBadge = create("TextLabel", {
 	Parent = reveal,
 	AnchorPoint = Vector2.new(1, 0),
-	Position = UDim2.new(1, 10, 0, -14),
-	Size = UDim2.new(0, 80, 0, 32),
+	Position = UDim2.new(1, 14, 0, -18),
+	Size = UDim2.new(0, 86, 0, 34),
 	Rotation = 12,
-	BackgroundColor3 = Color3.fromRGB(255, 70, 70),
+	BackgroundColor3 = UIKit.RED,
+	BorderSizePixel = 0,
 	Text = "NEW!",
-	TextColor3 = WHITE,
-	Font = TITLE_FONT,
+	TextColor3 = UIKit.WHITE,
+	TextStrokeTransparency = 0.3,
+	Font = UIKit.TITLE_FONT,
 	TextScaled = true,
 	Visible = false,
-}, { corner(8), stroke(2) })
+}, { corner(10), stroke(3), UIKit.shine(), UIKit.padding(4) })
 
 local function playFlash(color, strength)
 	flash.BackgroundColor3 = color
@@ -387,12 +313,16 @@ local function shake(duration, strength)
 	reveal.Position = REVEAL_POSITION
 end
 
+local function setRevealColor(color)
+	nameLabel.TextColor3 = color
+	revealStroke.Color = color
+	rarityChip.BackgroundColor3 = UIKit.darken(color, 0.25)
+end
+
 local function rainbow(duration)
 	local start = os.clock()
 	while os.clock() - start < duration do
-		local color = Color3.fromHSV((os.clock() * 0.8) % 1, 0.8, 1)
-		nameLabel.TextColor3 = color
-		revealStroke.Color = color
+		setRevealColor(Color3.fromHSV((os.clock() * 0.8) % 1, 0.8, 1))
 		task.wait(0.03)
 	end
 end
@@ -407,24 +337,21 @@ local function playReveal(result)
 	reveal.Visible = true
 	newBadge.Visible = false
 	rarityLabel.Text = "🎲 Rolling..."
-	rarityLabel.TextColor3 = WHITE
+	rarityChip.BackgroundColor3 = UIKit.BUTTON_COLOR
 
 	-- défilement qui ralentit : plus c'est rare, plus c'est long
 	for tick = 1, info.RevealTicks do
 		local fake = Items.List[math.random(#Items.List)]
-		local fakeColor = Rarities.Info[fake.Rarity].Color
 		nameLabel.Text = fake.Icon .. " " .. fake.Name
-		nameLabel.TextColor3 = fakeColor
-		revealStroke.Color = fakeColor
+		nameLabel.TextColor3 = Rarities.Info[fake.Rarity].Color
+		revealStroke.Color = Rarities.Info[fake.Rarity].Color
 		local progress = tick / info.RevealTicks
 		task.wait(0.03 + (info.RevealMaxDelay - 0.03) * progress * progress)
 	end
 
 	nameLabel.Text = item.Icon .. " " .. item.Name
-	nameLabel.TextColor3 = info.Color
-	revealStroke.Color = info.Color
 	rarityLabel.Text = string.upper(item.Rarity)
-	rarityLabel.TextColor3 = info.Color
+	setRevealColor(info.Color)
 	newBadge.Visible = result.IsNew
 
 	revealScale.Scale = 1 + 0.08 * info.Rank
@@ -437,10 +364,9 @@ local function playReveal(result)
 		task.spawn(shake, 0.4 + 0.3 * (info.Rank - 5), 6 + 4 * (info.Rank - 5))
 	end
 	if item.Rarity == "Mythic" then
-		task.delay(0.35, playFlash, WHITE, 0.6)
+		task.delay(0.35, playFlash, UIKit.WHITE, 0.6)
 		rainbow(1.5)
-		nameLabel.TextColor3 = info.Color
-		revealStroke.Color = info.Color
+		setRevealColor(info.Color)
 	end
 
 	task.wait(0.4 + 0.2 * info.Rank)
@@ -499,7 +425,7 @@ end)
 autoButton.Activated:Connect(function()
 	state.AutoRoll = not state.AutoRoll
 	autoButton.Text = if state.AutoRoll then "AUTO: ON" else "AUTO: OFF"
-	autoButton.BackgroundColor3 = if state.AutoRoll then Color3.fromRGB(60, 170, 90) else BUTTON_COLOR
+	autoButton.BackgroundColor3 = if state.AutoRoll then UIKit.GREEN else UIKit.BUTTON_COLOR
 end)
 
 task.spawn(function()

@@ -16,7 +16,7 @@ local ItemVisuals = require(Shared:WaitForChild("ItemVisuals"))
 local UIKit = require(Shared:WaitForChild("UIKit"))
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 
-local create, corner, stroke, makeButton = UIKit.create, UIKit.corner, UIKit.stroke, UIKit.makeButton
+local create, makeButton = UIKit.create, UIKit.makeButton
 
 -- Remplace par l'id d'un son de la Toolbox si tu veux un autre "ploc" (ex : "rbxassetid://123456")
 local PLOC_SOUND_ID = "rbxasset://sounds/clickfast.wav"
@@ -118,43 +118,50 @@ local gui = create("ScreenGui", {
 	Parent = player:WaitForChild("PlayerGui"),
 })
 
+local BUILD_IDLE = UIKit.darken(UIKit.GREEN, 0.4)
+local DELETE_IDLE = UIKit.darken(UIKit.RED, 0.4)
+
 local buildButton = makeButton({
 	Parent = gui,
 	AnchorPoint = Vector2.new(0, 0.5),
-	Position = UDim2.new(0, 12, 0.5, -34),
-	Size = UDim2.new(0, 145, 0, 56),
+	Position = UDim2.new(0, 14, 0.5, -34),
+	Size = UDim2.new(0, 150, 0, 56),
+	BackgroundColor3 = BUILD_IDLE,
 	Text = "🔨 BUILD",
+	Studs = 3,
 })
 
 local deleteButton = makeButton({
 	Parent = gui,
 	AnchorPoint = Vector2.new(0, 0.5),
-	Position = UDim2.new(0, 12, 0.5, 34),
-	Size = UDim2.new(0, 145, 0, 56),
+	Position = UDim2.new(0, 14, 0.5, 34),
+	Size = UDim2.new(0, 150, 0, 56),
+	BackgroundColor3 = DELETE_IDLE,
 	Text = "🗑️ DELETE",
+	Studs = 3,
 })
 
 -- Sur mobile : on touche une case, puis on confirme avec ce bouton
 local confirmButton = makeButton({
 	Parent = gui,
 	AnchorPoint = Vector2.new(0.5, 1),
-	Position = UDim2.new(0.5, 0, 1, -100),
-	Size = UDim2.new(0, 200, 0, 56),
+	Position = UDim2.new(0.5, 0, 1, -112),
+	Size = UDim2.new(0, 210, 0, 58),
+	BackgroundColor3 = UIKit.GREEN,
 	Text = "✔ PLACE",
 	Visible = false,
+	Studs = 3,
 })
 
-local buildPanel = create("Frame", {
+local buildPanel, buildBody, _, _, buildClose = UIKit.makePanel({
 	Parent = gui,
-	Visible = false,
+	Title = "🔨 BUILD",
+	Accent = UIKit.GREEN,
 	AnchorPoint = Vector2.new(1, 0.5),
-	Position = UDim2.new(1, -170, 0.5, 0),
-	Size = UDim2.fromScale(0.3, 0.72),
-	BackgroundColor3 = UIKit.PANEL_COLOR,
-}, {
-	corner(16),
-	stroke(3),
-	create("UISizeConstraint", { MinSize = Vector2.new(230, 220), MaxSize = Vector2.new(400, 560) }),
+	Position = UDim2.new(1, -178, 0.5, 0),
+	Size = UDim2.fromScale(0.32, 0.72),
+	MinSize = Vector2.new(260, 240),
+	MaxSize = Vector2.new(430, 580),
 })
 
 -- Onglets en haut de la fenêtre : un par catégorie
@@ -165,9 +172,8 @@ local TABS = {
 }
 
 local tabBar = create("Frame", {
-	Parent = buildPanel,
-	Position = UDim2.new(0, 10, 0, 10),
-	Size = UDim2.new(1, -20, 0, 40),
+	Parent = buildBody,
+	Size = UDim2.new(1, 0, 0, 40),
 	BackgroundTransparency = 1,
 }, {
 	create("UIListLayout", {
@@ -187,17 +193,10 @@ for order, tab in TABS do
 	})
 end
 
-local buildList = create("ScrollingFrame", {
-	Parent = buildPanel,
-	Position = UDim2.new(0, 10, 0, 58),
-	Size = UDim2.new(1, -20, 1, -68),
-	BackgroundTransparency = 1,
-	BorderSizePixel = 0,
-	ScrollBarThickness = 6,
-	CanvasSize = UDim2.new(),
-	AutomaticCanvasSize = Enum.AutomaticSize.Y,
-}, {
-	create("UIListLayout", { Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder }),
+local buildList = UIKit.makeList({
+	Parent = buildBody,
+	Position = UDim2.new(0, 0, 0, 48),
+	Size = UDim2.new(1, 0, 1, -48),
 })
 
 local selectItem -- défini plus bas
@@ -206,40 +205,34 @@ local function renderBuildPanel()
 	for category, button in tabButtons do
 		button.BackgroundColor3 = if category == state.Tab then UIKit.GREEN else UIKit.BUTTON_COLOR
 	end
-	for _, child in buildList:GetChildren() do
-		if child:IsA("GuiObject") then
-			child:Destroy()
-		end
-	end
+	UIKit.clearList(buildList)
 	local order = 0
 	for _, item in Items.ByCategory[state.Tab] do
 		local count = state.Inventory[item.Id] or 0
 		if count > 0 then
 			order += 1
 			local isSelected = item.Id == state.SelectedId
-			local button = makeButton({
+			local row = UIKit.itemRow({
 				Parent = buildList,
 				LayoutOrder = order,
-				Size = UDim2.new(1, -8, 0, 40),
-				Text = string.format("%s %s ×%d", item.Icon, item.Name, count),
-				TextColor3 = Rarities.Info[item.Rarity].Color,
-				TextXAlignment = Enum.TextXAlignment.Left,
-				BackgroundColor3 = if isSelected then Color3.fromRGB(40, 90, 55) else UIKit.BUTTON_COLOR,
+				Text = item.Icon .. " " .. item.Name,
+				Color = Rarities.Info[item.Rarity].Color,
+				Badge = "×" .. count,
+				Selected = isSelected,
+				Clickable = true,
 			})
-			button.Activated:Connect(function()
+			row.Activated:Connect(function()
 				selectItem(if isSelected then nil else item.Id)
 			end)
 		end
 	end
 	if order == 0 then
-		create("TextLabel", {
+		UIKit.label({
 			Parent = buildList,
-			Size = UDim2.new(1, -8, 0, 60),
-			BackgroundTransparency = 1,
+			Size = UDim2.new(1, -10, 0, 60),
 			Text = "Rien dans cette catégorie.\nFais des 🎲 ROLL !",
 			TextColor3 = UIKit.GREY,
 			Font = UIKit.TEXT_FONT,
-			TextScaled = true,
 		})
 	end
 end
@@ -432,8 +425,9 @@ local function setMode(mode)
 	selectItem(nil)
 
 	buildPanel.Visible = mode == "Build"
-	buildButton.BackgroundColor3 = if mode == "Build" then UIKit.GREEN else UIKit.BUTTON_COLOR
-	deleteButton.BackgroundColor3 = if mode == "Delete" then UIKit.RED else UIKit.BUTTON_COLOR
+	buildButton.BackgroundColor3 = if mode == "Build" then UIKit.GREEN else BUILD_IDLE
+	deleteButton.BackgroundColor3 = if mode == "Delete" then UIKit.RED else DELETE_IDLE
+	confirmButton.BackgroundColor3 = if mode == "Delete" then UIKit.RED else UIKit.GREEN
 	confirmButton.Text = if mode == "Delete" then "🗑️ REMOVE" else "✔ PLACE"
 	if mode then
 		closeOtherPanels()
@@ -461,6 +455,11 @@ deleteButton.Activated:Connect(function()
 end)
 
 confirmButton.Activated:Connect(confirmAction)
+
+-- le ✕ de la fenêtre BUILD quitte le mode construction
+buildClose.Activated:Connect(function()
+	setMode(nil)
+end)
 
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then
