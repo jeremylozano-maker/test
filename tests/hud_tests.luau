@@ -90,7 +90,7 @@ check("Roll : Build caché", not shown(build))
 check("Roll : chances '1 in N' affichées", find(function(t) return t:match("^1 in %d+$") ~= nil end) ~= nil)
 button("🔒 Auto").Activated:Fire()
 check("Auto verrouillé : renvoie vers les Skills", find(function(t) return t == "🌳 Skills!" end) ~= nil)
-runTasks() -- fin de l'animation du roll
+runTasks(200) -- fin de l'animation du roll (10 s simulées)
 -- Auto Roll débloqué : il continue après la fermeture de la fenêtre
 snapshot.Skills.AutoRoll = 1
 dataSync.OnClientEvent:Fire(snapshot)
@@ -101,6 +101,12 @@ check("Close : retour à l'écran normal", HudState.Mode == "Main" and shown(bui
 check("Close : Auto Roll toujours actif", find(function(t) return t == "Auto: ON" end) ~= nil)
 check("Close : le bouton ROLL indique AUTO", find(function(t) return t == "AUTO" end) ~= nil)
 roll = button("AUTO")
+runTasks(30) -- l'Auto Roll tourne en fond (1.5 s simulées)
+local topName = find(function(t) return t == "Wood Cube" and true end)
+check("Auto Roll en fond : de nouveaux rolls partent", rollCalls >= 2)
+check("Auto Roll en fond : objet affiché", topName ~= nil and shown(topName))
+check("Auto Roll en fond : affiché tout en haut", topName and topName.Parent.AnchorPoint.Y == 0 and topName.Parent.Position.Y.Scale == 0)
+check("Auto Roll en fond : en petit", topName and topName.Parent:FindFirstChildWhichIsA("UIScale").Scale < 1)
 
 -- Build
 build.Activated:Fire()

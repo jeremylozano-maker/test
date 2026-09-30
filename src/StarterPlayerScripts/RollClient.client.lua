@@ -25,6 +25,7 @@ local state = {
 	Revealing = false,
 	Busy = false,
 	AutoRoll = false,
+	RevealToken = 0, -- sert à cacher la petite révélation du haut quelques secondes après le dernier roll
 }
 
 ---------------------------------------------------------------- écran
@@ -294,7 +295,13 @@ end)
 
 ---------------------------------------------------------------- révélation du roll (au centre, fond transparent)
 
-local REVEAL_POSITION = UDim2.fromScale(0.5, 0.4)
+-- Fenêtre des dés ouverte : en grand au centre. Fermée (Auto Roll en fond) : en petit tout en haut.
+local REVEAL_CENTER = UDim2.fromScale(0.5, 0.4)
+local REVEAL_TOP = UDim2.new(0.5, 0, 0, 6)
+local REVEAL_TOP_SCALE = 0.55
+local REVEAL_TOP_HIDE_DELAY = 2.5 -- secondes avant de cacher la révélation du haut
+local REVEAL_POSITION = REVEAL_CENTER
+local revealBaseScale = 1
 
 local reveal = create("Frame", {
 	Parent = gui,
@@ -421,6 +428,16 @@ local function shake(duration, strength)
 	reveal.Position = REVEAL_POSITION
 end
 
+-- Place la révélation au centre (fenêtre des dés) ou en petit en haut (Auto Roll en fond)
+local function placeReveal()
+	local centered = HudState.Mode == "Roll"
+	REVEAL_POSITION = if centered then REVEAL_CENTER else REVEAL_TOP
+	revealBaseScale = if centered then 1 else REVEAL_TOP_SCALE
+	reveal.AnchorPoint = if centered then Vector2.new(0.5, 0.5) else Vector2.new(0.5, 0)
+	reveal.Position = REVEAL_POSITION
+	revealScale.Scale = revealBaseScale
+end
+
 local function setRevealColor(color)
 	nameLabel.TextColor3 = color
 	oddsLabel.TextColor3 = color
@@ -439,11 +456,14 @@ local function playReveal(result)
 	local item = Items.ById[result.ItemId]
 	local info = Rarities.Info[item.Rarity]
 	state.Revealing = true
+	state.RevealToken += 1
+	local token = state.RevealToken
 
 	-- Quick Reveal : animation plus courte
 	local speed = SkillTree.GetRevealDurationMultiplier(state.Snapshot and state.Snapshot.Skills or {})
 
-	reveal.Visible = HudState.Mode == "Roll"
+	placeReveal()
+	reveal.Visible = true
 	newBadge.Visible = false
 	bonusChip.Visible = false
 	rarityLabel.Text = "🎲 Rolling..."
@@ -467,8 +487,8 @@ local function playReveal(result)
 		bonusChip.Visible = true
 	end
 
-	revealScale.Scale = 1 + 0.08 * info.Rank
-	TweenService:Create(revealScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	revealScale.Scale = revealBaseScale * (1 + 0.08 * info.Rank)
+	TweenService:Create(revealScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = revealBaseScale }):Play()
 
 	if info.Rank >= 4 then
 		playFlash(info.Color, 0.2 + 0.1 * (info.Rank - 4))
@@ -488,8 +508,15 @@ local function playReveal(result)
 		applySnapshot(state.Pending)
 		state.Pending = nil
 	end
-	-- le dernier objet reste affiché tant que la fenêtre des dés est ouverte
-	reveal.Visible = HudState.Mode == "Roll"
+	-- fenêtre des dés ouverte : le dernier objet reste affiché ;
+	-- sinon (Auto Roll en fond) la petite révélation du haut disparaît après quelques secondes
+	if HudState.Mode ~= "Roll" then
+		task.delay(REVEAL_TOP_HIDE_DELAY, function()
+			if state.RevealToken == token and HudState.Mode ~= "Roll" then
+				reveal.Visible = false
+			end
+		end)
+	end
 end
 
 ---------------------------------------------------------------- roll
@@ -570,7 +597,8 @@ local function applyMode(mode)
 	closeRollButton.Visible = rolling
 	leftColumn.Visible = mode ~= "Build"
 	-- l'Auto Roll continue même fenêtre fermée ; la révélation ne s'affiche que dans la fenêtre des dés
-	reveal.Visible = rolling and (state.Revealing or nameLabel.Text ~= "")
+	placeReveal()
+	reveal.Visible = state.Revealing or (rolling and nameLabel.Text ~= "")
 	if mode == "Build" then
 		inventoryPanel.Visible = false
 		indexPanel.Visible = false

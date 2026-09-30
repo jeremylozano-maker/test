@@ -206,33 +206,45 @@ playerGui.Parent = localPlayer
 rawget(Players, "__props").LocalPlayer = localPlayer
 
 ---------------------------------------------------------------- tâches (exécution immédiate)
--- Les tâches s'exécutent jusqu'à leur task.wait, puis attendent runTasks() (qui simule le temps qui passe)
-local parked = {}
+-- Horloge simulée : runTasks(n) avance de n "ticks" de 0.05 s ; task.wait / task.delay respectent la durée
+local TICK = 0.05
+local parked = {} -- { Thread, TicksLeft }
 local function start(fn, ...)
 	local thread = coroutine.create(fn)
 	local ok, err = coroutine.resume(thread, ...)
 	if not ok then error(err) end
 end
+local function sleep(seconds)
+	if coroutine.isyieldable() then
+		table.insert(parked, { Thread = (coroutine.running()), TicksLeft = math.max(1, math.ceil((seconds or 0) / TICK)) })
+		coroutine.yield()
+	end
+	return seconds or 0
+end
 task = {
 	spawn = start,
 	defer = start,
-	delay = function(_, fn, ...) start(fn, ...) end,
-	wait = function()
-		if coroutine.isyieldable() then
-			table.insert(parked, (coroutine.running()))
-			coroutine.yield()
-		end
-		return 0
+	delay = function(seconds, fn, ...)
+		local args = table.pack(...)
+		start(function()
+			sleep(seconds)
+			fn(table.unpack(args, 1, args.n))
+		end)
 	end,
+	wait = sleep,
 }
-function runTasks(steps)
-	for _ = 1, steps or 300 do
+function runTasks(ticks)
+	for _ = 1, ticks or 300 do
 		local list = parked
 		parked = {}
-		if #list == 0 then return end
-		for _, thread in list do
-			local ok, err = coroutine.resume(thread)
-			if not ok then error(err) end
+		for _, entry in list do
+			entry.TicksLeft -= 1
+			if entry.TicksLeft <= 0 then
+				local ok, err = coroutine.resume(entry.Thread)
+				if not ok then error(err) end
+			else
+				table.insert(parked, entry)
+			end
 		end
 	end
 end
