@@ -22,7 +22,7 @@ local function defaultData()
 		Wave = 1, -- prochaine vague à jouer
 		Inventory = {}, -- [itemId] = quantité non placée
 		Index = {}, -- [itemId] = true
-		Skills = { AutoRoll = 0, Luck = 0, RollSpeed = 0, CoreHP = 0 },
+		Skills = { AutoRoll = 0, Luck = 0, RollSpeed = 0, CoreHP = 0, Sword = 0 },
 		Island = {}, -- { { Id, X, Z, H }, ... }
 		Stats = { TotalRolls = 0, BestWave = 0, ZombiesKilled = 0, CoinsEarned = 0 },
 	}

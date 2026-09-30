@@ -10,7 +10,8 @@
   Il occupe 1 ou 2 étages selon sa hauteur (forçable avec l'attribut `GridLevels` sur workspace.Core).
 - La hauteur de placement est automatique : l'objet va sur le haut de la colonne visée.
 - Objets détruits pendant les vagues : ils restent détruits d'une vague à l'autre, la base est réparée seulement au STOP ou à la mort.
-- Zombies : vont toujours vers l'objet (ciblable) le plus proche, sinon le Core.
+- Zombies : marchent vers le Core et attaquent l'objet (ciblable) le plus proche SUR LEUR CHEMIN (couloir d'une case entre eux et le Core), sinon le Core.
+- Épée : le joueur frappe les zombies devant lui (8 studs, 0.5 s entre deux coups). Dégâts 15 × 1.25^niveau, amélioration avec les Coins (branche ⚔️ SWORD, 20 niveaux, 50 × 1.35^N).
 - Mort : fenêtre de stats (zombies tués, coins gagnés, vagues survécues).
   - Revive (Robux) : Core et armes full vie, reprise à la vague de la mort.
   - Accepter : le joueur garde les coins, la base est restaurée, il ne perd rien.
@@ -35,6 +36,7 @@ Dans une rareté, poids : Block 6, Trap 3, Weapon 1 (les blocs sortent plus souv
 | Luck | 10 | 100 × 1.6^N | +0.15 Luck / niveau |
 | Roll Speed | 10 | 80 × 1.5^N | cooldown 2 s × 0.92^N (min 0.5 s) |
 | Core HP | 10 | 120 × 1.55^N | +20 % vie du Core / niveau |
+| Sword | 20 | 50 × 1.35^N | +25 % dégâts de l'épée / niveau |
 
 ## Vagues
 - Bouton START : le joueur lance la vague. Pas de construction pendant une vague. Vitesse x1 / x2 (x3 Robux plus tard).

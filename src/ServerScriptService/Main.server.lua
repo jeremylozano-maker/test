@@ -12,6 +12,8 @@ local RollService = require(Services:WaitForChild("RollService"))
 local IslandService = require(Services:WaitForChild("IslandService"))
 local EnemyService = require(Services:WaitForChild("EnemyService"))
 local WaveService = require(Services:WaitForChild("WaveService"))
+local SkillService = require(Services:WaitForChild("SkillService"))
+local SwordService = require(Services:WaitForChild("SwordService"))
 
 local remotes = Instance.new("Folder")
 remotes.Name = "Remotes"
@@ -32,6 +34,7 @@ local startWaveRemote = makeRemote("RemoteFunction", "StartWave")
 local stopWavesRemote = makeRemote("RemoteFunction", "StopWaves")
 local speedRemote = makeRemote("RemoteFunction", "SetWaveSpeed")
 local deathRemote = makeRemote("RemoteFunction", "ResolveDeath")
+local purchaseSkillRemote = makeRemote("RemoteFunction", "PurchaseSkill")
 remotes.Parent = ReplicatedStorage
 
 -- Ce que le client a le droit de voir de ses données
@@ -90,8 +93,13 @@ deathRemote.OnServerInvoke = function(player, choice)
 	return false
 end
 
+purchaseSkillRemote.OnServerInvoke = function(player, skillId)
+	return SkillService.Purchase(player, skillId)
+end
+
 DataService.Init()
 RollService.Init()
 IslandService.Init()
 EnemyService.Init()
 WaveService.Init()
+SwordService.Init()

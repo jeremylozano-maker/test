@@ -13,6 +13,7 @@ EnemyService.OnKilled = nil -- function(enemy)
 EnemyService.OnCoreHit = nil -- function(damage)
 
 local RETARGET_INTERVAL = 0.5
+local PATH_WIDTH = 1 -- en cases : largeur du "couloir" entre le zombie et le Core
 
 local enemies = {}
 local folder
@@ -98,20 +99,32 @@ end
 
 ---------------------------------------------------------------- IA
 
-local function horizontalDistance(a, b)
-	return Vector3.new(a.X - b.X, 0, a.Z - b.Z).Magnitude
-end
-
--- Objet destructible le plus proche (le bas de chaque colonne), sinon nil = le Core
+-- Le zombie marche vers le Core : il cible l'objet destructible le plus proche SUR SON CHEMIN
+-- (le bas de la colonne, dans un couloir entre lui et le Core). Aucun objet sur le chemin -> nil = le Core.
 local function findTarget(enemy, grid)
+	local spacing = grid:GetSpacing()
+	local corePosition = grid:SlotBottom(grid.CoreX, grid.CoreZ, 1)
+	local toCore = Vector3.new(corePosition.X - enemy.Position.X, 0, corePosition.Z - enemy.Position.Z)
+	local coreDistance = toCore.Magnitude
+	if coreDistance < 0.01 then
+		return nil
+	end
+	local direction = toCore / coreDistance
+
 	local best, bestDistance
 	for _, column in IslandService.GetColumns() do
 		local entry = column[1]
 		if entry and not entry.Destroyed and not grid:IsCore(entry.X, entry.Z)
 			and Items.CategoryInfo[Items.ById[entry.Id].Category].Targetable then
-			local distance = horizontalDistance(enemy.Position, grid:SlotBottom(entry.X, entry.Z, 1))
-			if not bestDistance or distance < bestDistance then
-				best, bestDistance = entry, distance
+			local cell = grid:SlotBottom(entry.X, entry.Z, 1)
+			local offset = Vector3.new(cell.X - enemy.Position.X, 0, cell.Z - enemy.Position.Z)
+			local along = offset:Dot(direction) -- avance vers le Core
+			local aside = (offset - direction * along).Magnitude -- écart par rapport au chemin
+			if along >= -spacing * 0.5 and along <= coreDistance and aside <= spacing * PATH_WIDTH then
+				local distance = offset.Magnitude
+				if not bestDistance or distance < bestDistance then
+					best, bestDistance = entry, distance
+				end
 			end
 		end
 	end

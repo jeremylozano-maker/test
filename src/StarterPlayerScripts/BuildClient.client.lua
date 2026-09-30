@@ -426,6 +426,11 @@ local function setMode(mode)
 	confirmButton.Text = if mode == "Delete" then "🗑️ REMOVE" else "✔ PLACE"
 	if mode then
 		closeOtherPanels()
+		-- on range l'épée pour que le clic serve à construire
+		local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			humanoid:UnequipTools()
+		end
 	end
 end
 
